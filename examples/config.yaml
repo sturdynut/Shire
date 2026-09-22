@@ -1,0 +1,44 @@
+# Copy to ~/.config/uplift/config.yaml, then run `uplift validate` and `uplift apply`.
+
+serverMode: { keepAwake: true }
+presets: { tailscale: { enabled: true } }
+remote: { statusPage: tailnet, actions: restart }
+
+alerts:
+  macos: true
+  phone: true
+  crashLoop: 3 in 5m
+  unhealthyFor: 2m
+
+logs: { maxSize: 10MB, keep: 3 }
+
+services:
+  # Homebrew runs Postgres; Uplift only watches it.
+  postgres:
+    external: homebrew.mxcl.postgresql@16
+    health: { type: tcp, port: 5432 }
+
+  # DoulaSimply demo: seed data only, on its own local database. Never real client data.
+  doulasimply-api:
+    command: node
+    args: [dist/index.js]
+    build: pnpm build
+    cwd: ~/Code/DoulaSimply/server
+    envFile: .env.demo
+    dependsOn: [postgres]
+    health: { type: tcp, port: 3001 }
+
+  doulasimply-web:
+    command: pnpm
+    args: [preview, --port, "5174"]
+    build: pnpm build
+    cwd: ~/Code/DoulaSimply/web
+    serve: 443
+    dependsOn: [doulasimply-api]
+    health: { type: http, url: http://localhost:5174 }
+
+  # Keeps TradingView Desktop open with its debug port so the TradingView MCP works.
+  tradingview:
+    command: /Applications/TradingView.app/Contents/MacOS/TradingView
+    args: [--remote-debugging-port=9222]
+    health: { type: tcp, port: 9222 }

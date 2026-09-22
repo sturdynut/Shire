@@ -156,7 +156,9 @@ launchd starts services with `PATH=/usr/bin:/bin:/usr/sbin:/sbin` and does not e
 
 - On every `apply`, resolve each command to an absolute path using the login shell, and expand `~`.
 - Show resolved paths in validation (`pnpm → ~/.nvm/versions/node/v22.20.0/bin/pnpm`), and warn when a command comes from a version manager.
-- Each plist runs a small wrapper, `uplift run <service>`, rather than the raw command. The wrapper sets PATH and env, loads `envFile`, runs `build` when needed, execs the real command, and writes clear log lines (`uplift: no such file: …/v22.14.0/bin/pnpm`). Plists then rarely change, which also cuts down macOS "Background Items Added" notifications.
+- Each plist runs a small wrapper, `uplift run <service>`, rather than the raw command. The wrapper waits for dependencies, loads `envFile` (secrets never go into the plist), runs the real command with its output captured into rotating logs, records starts and exits for crash-loop detection, and writes clear log lines (`uplift: no such file: …/v22.14.0/bin/pnpm`).
+- A service's PATH is its command's folder, then any PATH the config sets, then Homebrew and the system. Not the whole login PATH: that changes on every nvm switch and would restart unrelated services (TradingView) for nothing.
+- `build:` runs on `apply` for new or changed services and on `uplift restart`, never on launchd's automatic respawns, so a crash loop doesn't rebuild every 10 seconds. A failed build leaves the running version alone.
 
 ### Applying changes
 
@@ -309,7 +311,7 @@ Light and dark follow macOS.
 
 # MVP phases
 
-## Phase 1 — Core
+## Phase 1 — Core ✅ (see README.md)
 
 - Parse and validate YAML
 - Resolve commands and paths on every apply; `uplift run` wrapper
@@ -378,23 +380,17 @@ Docker orchestration, Kubernetes, remote server management, Linux/Windows, SSH m
 Swift throughout: one Core library shared by CLI, agent and app; SwiftUI for the menu bar and window. Minimum macOS 14.
 
 ```text
-Uplift/
-├── Core/
-│   ├── Config/       # schema, validation, command resolution
-│   ├── Launchd/      # plist generation, bootstrap/bootout, external jobs
-│   ├── Health/
-│   ├── Logs/         # capture + rotation
-│   ├── Readiness/
-│   ├── Alerts/
-│   └── Reconciler/
-├── CLI/              # `uplift`
-├── Agent/            # `uplift-agent`: health, keep-awake, alerts, phone page
-└── App/
-    ├── MenuBar/
-    ├── Service/
-    ├── Config/
-    ├── Readiness/
-    └── Alerts/
+Sources/
+├── UpliftCore/
+│   ├── Config/       # schema, loading, validation, command resolution
+│   ├── Launchd/      # plist generation, launchctl
+│   ├── Reconciler/   # plan/apply, dependency order
+│   ├── Runner/       # `uplift run`: the wrapper launchd starts
+│   ├── Logs/         # rotation, tail
+│   ├── Status/       # event log, crash loops, likely cause
+│   └── Health/       # one-shot TCP/HTTP checks
+└── uplift/           # the CLI
+# Later: Agent/ (uplift-agent), App/ (menu bar + window), Readiness/, Alerts/
 ```
 
 ---
