@@ -31,6 +31,8 @@ public struct TenderPaths: Sendable, Equatable {
     public var alertsFile: URL { stateDir.appending(path: "alerts.jsonl") }
     /// Touched by the menu bar app while it runs.
     public var appHeartbeatFile: URL { stateDir.appending(path: "app-heartbeat") }
+    public var vapidKeyFile: URL { stateDir.appending(path: "vapid-key") }
+    public var pushSubscriptionsFile: URL { stateDir.appending(path: "push-subscriptions.json") }
 
     public func stdoutLog(for service: String) -> URL { logsDir.appending(path: "\(service).stdout.log") }
     public func stderrLog(for service: String) -> URL { logsDir.appending(path: "\(service).stderr.log") }

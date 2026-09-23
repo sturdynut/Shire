@@ -85,19 +85,27 @@ public struct RemoteSettings: Equatable, Sendable, Decodable {
 
     public var statusPage: StatusPage
     public var actions: Actions
+    /// HTTPS port on your tailnet (`tailscale serve --https=<port>`).
+    public var port: Int
+    /// Where tender-agent listens on this Mac, behind tailscale serve. Only 127.0.0.1.
+    public var localPort: Int
 
-    public init(statusPage: StatusPage = .off, actions: Actions = .restart) {
+    public init(statusPage: StatusPage = .off, actions: Actions = .restart, port: Int = 7777, localPort: Int = 7780) {
         self.statusPage = statusPage
         self.actions = actions
+        self.port = port
+        self.localPort = localPort
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         statusPage = try c.decodeIfPresent(StatusPage.self, forKey: .statusPage) ?? .off
         actions = try c.decodeIfPresent(Actions.self, forKey: .actions) ?? .restart
+        port = try c.decodeIfPresent(Int.self, forKey: .port) ?? 7777
+        localPort = try c.decodeIfPresent(Int.self, forKey: .localPort) ?? 7780
     }
 
-    enum CodingKeys: String, CodingKey, CaseIterable { case statusPage, actions }
+    enum CodingKeys: String, CodingKey, CaseIterable { case statusPage, actions, port, localPort }
 }
 
 public struct AlertSettings: Equatable, Sendable, Decodable {

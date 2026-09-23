@@ -89,6 +89,11 @@ public final class TenderAgent {
     private var lastAlert: AlertMessage?
     /// The heartbeat left by the previous run, used for the "services were down" report.
     private let previousHeartbeat: Date?
+    /// Config and system facts, shared with the phone page's server thread.
+    private let shared = LockedBox<(config: TenderConfig?, facts: SystemFacts?)>((nil, nil))
+    private var phone: PhoneServer?
+    private var phonePort: Int?
+    private let startPhoneServer: Bool
 
     /// Readiness checks that aren't worth an alert: the agent can't usefully report on itself; being on battery
     /// already alerts, so "keep-awake released" would repeat it; and "the lid would sleep it" describes what *could*
@@ -101,6 +106,7 @@ public final class TenderAgent {
                 notifier: Notifying = OsascriptNotifier(),
                 facts: (() -> SystemFacts)? = nil,
                 readinessInterval: TimeInterval = 300,
+                phoneServer: Bool = true,
                 now: Date = Date()) {
         self.paths = paths
         self.interval = interval
@@ -110,6 +116,7 @@ public final class TenderAgent {
         self.notifier = notifier
         self.facts = facts ?? { SystemProbe(paths: paths).gather() }
         self.readinessInterval = readinessInterval
+        self.startPhoneServer = phoneServer
         self.startedAt = now
         let previous = AgentState.read(from: paths.agentStateFile)
         self.previousHeartbeat = previous?.updatedAt
@@ -135,6 +142,8 @@ public final class TenderAgent {
         if let config {
             health = monitor.runDueChecks(config: config, now: now)
             evaluateIncidents(config: config, health: health, now: now)
+            shared.value.config = config
+            if startPhoneServer { updatePhoneServer(config: config) }
         }
         let state = AgentState(
             pid: ProcessInfo.processInfo.processIdentifier,
@@ -169,7 +178,9 @@ public final class TenderAgent {
         var warnings: [ReadinessCheck]?
         if lastReadiness == nil || now.timeIntervalSince(lastReadiness!) >= readinessInterval {
             lastReadiness = now
-            warnings = Readiness.warnings(Readiness.evaluate(facts(), config: config, now: now))
+            let gathered = facts()
+            shared.value.facts = gathered
+            warnings = Readiness.warnings(Readiness.evaluate(gathered, config: config, now: now))
                 .filter { !Self.silentReadinessChecks.contains($0.id) }
         }
 
@@ -188,6 +199,37 @@ public final class TenderAgent {
         // The menu bar app reads alerts.jsonl and posts them as Tender; only fall back when it isn't running.
         if config?.alerts.macos ?? true, !AppPresence.isRunning(paths) {
             notifier.deliver(alert)
+        }
+        if config?.alerts.phone == true, startPhoneServer {
+            let sender = WebPushSender(paths: paths)
+            Task.detached { await sender.send(alert) }
+        }
+    }
+
+    /// Runs the phone page's server while `remote.statusPage` is `tailnet`, on `remote.localPort`.
+    private func updatePhoneServer(config: TenderConfig) {
+        let wanted = config.remote.statusPage == .tailnet ? config.remote.localPort : nil
+        guard wanted != phonePort else { return }
+        phone?.stop()
+        phone = nil
+        phonePort = nil
+        guard let port = wanted else {
+            log("phone page stopped")
+            return
+        }
+        let shared = self.shared
+        let paths = self.paths
+        let server = PhoneServer(paths: paths, owner: TailscaleServe().ownerLogin(),
+                                 config: { shared.value.config }, facts: { shared.value.facts },
+                                 onPushTest: { alert in await WebPushSender(paths: paths).send(alert) })
+        do {
+            try server.start(port: port)
+            phone = server
+            phonePort = port
+            log("phone page listening on 127.0.0.1:\(port)")
+        } catch {
+            log("phone page couldn’t listen on 127.0.0.1:\(port): \(error)")
+            phonePort = port // don't retry every tick; a config change retries
         }
     }
 

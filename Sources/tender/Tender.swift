@@ -45,6 +45,7 @@ struct Apply: ParsableCommand {
         let width = max(12, (plan.changes.map(\.name.count).max() ?? 0) + 2)
         if !plan.hasChanges {
             for change in plan.changes { print("\(Terminal.green("✓")) \(Terminal.pad(change.name, width)) \(Terminal.dim(change.summary))") }
+            if !dryRun { sharePhonePage(config: config, width: width) }
             print("Nothing to do. The Mac already matches config.yaml.")
             return
         }
@@ -71,7 +72,31 @@ struct Apply: ParsableCommand {
                 print("\(Terminal.red("✗")) \(Terminal.pad(outcome.name, width)) \(text)")
             }
         }
+        sharePhonePage(config: config, width: width)
         if failed { throw ExitCode.failure }
+    }
+
+    /// `remote.statusPage: tailnet` shares tender-agent's page with `tailscale serve`; `off` stops sharing it.
+    private func sharePhonePage(config: TenderConfig, width: Int) {
+        let serve = TailscaleServe()
+        let label = Terminal.pad("phone page", width)
+        switch config.remote.statusPage {
+        case .tailnet:
+            var dns: String?
+            if case .connected(_, let name, _) = Tailscale.status() { dns = name }
+            switch serve.ensure(port: config.remote.port, localPort: config.remote.localPort, dnsName: dns) {
+            case .alreadyServing(let url): print("\(Terminal.green("✓")) \(label) \(url)")
+            case .started(let url): print("\(Terminal.green("✓")) \(label) \(url) (shared on your tailnet)")
+            case .portTaken(let other):
+                print("\(Terminal.red("✗")) \(label) tailnet port \(config.remote.port) already serves \(other); pick another remote.port")
+            case .failed(let why): print("\(Terminal.red("✗")) \(label) \(why)")
+            default: break
+            }
+        case .off:
+            if serve.remove(port: config.remote.port, localPort: config.remote.localPort) == .stopped {
+                print("\(Terminal.green("✓")) \(label) no longer shared")
+            }
+        }
     }
 }
 
@@ -423,6 +448,10 @@ struct Uninstall: ParsableCommand {
 
     func run() throws {
         let reconciler = Reconciler(paths: options.paths, launchControl: SystemLaunchControl())
+        if let config = try? ConfigLoader.load(from: options.paths.configFile),
+           TailscaleServe().remove(port: config.remote.port, localPort: config.remote.localPort) == .stopped {
+            print("\(Terminal.green("✓")) phone page: no longer shared on your tailnet")
+        }
         let outcomes = reconciler.uninstall()
         if outcomes.isEmpty {
             print("Nothing to remove: no Tender LaunchAgents are installed.")

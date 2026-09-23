@@ -171,7 +171,7 @@ struct AgentAlertTests {
         let notifier = FakeNotifier()
         let agent = TenderAgent(paths: home.paths, power: FakePower(), powerSource: { PowerInfo(hasBattery: false, onACPower: true) },
                                 monitor: HealthMonitor(probe: { _ in .healthy(detail: "ok") }), notifier: notifier,
-                                facts: { SystemFacts(fileVaultOn: true, autoInstallMacOSUpdates: false) })
+                                facts: { SystemFacts(fileVaultOn: true, autoInstallMacOSUpdates: false) }, phoneServer: false)
         let state = agent.tick(now: now)
         agent.tick(now: now.addingTimeInterval(5))
         #expect(notifier.titles == ["web is crash-looping"])
@@ -181,7 +181,7 @@ struct AgentAlertTests {
         // A fresh agent (after a restart) remembers the open incident and doesn't repeat it.
         let restarted = TenderAgent(paths: home.paths, power: FakePower(), powerSource: { PowerInfo(hasBattery: false, onACPower: true) },
                                     monitor: HealthMonitor(probe: { _ in .healthy(detail: "ok") }), notifier: notifier,
-                                    facts: { SystemFacts(fileVaultOn: true, autoInstallMacOSUpdates: false) })
+                                    facts: { SystemFacts(fileVaultOn: true, autoInstallMacOSUpdates: false) }, phoneServer: false)
         restarted.tick(now: now.addingTimeInterval(10))
         #expect(notifier.titles.count == 1)
     }
@@ -192,7 +192,7 @@ struct AgentAlertTests {
         let notifier = FakeNotifier()
         let agent = TenderAgent(paths: home.paths, power: FakePower(), powerSource: { PowerInfo(hasBattery: false, onACPower: true) },
                                 monitor: HealthMonitor(probe: { _ in .healthy(detail: "ok") }), notifier: notifier,
-                                facts: { SystemFacts(fileVaultOn: false, autoInstallMacOSUpdates: true) })
+                                facts: { SystemFacts(fileVaultOn: false, autoInstallMacOSUpdates: true) }, phoneServer: false)
         agent.tick()
         #expect(notifier.titles.isEmpty)
         #expect(AlertLog(url: home.paths.alertsFile).recent(10).map(\.title).contains("macOS installs updates and restarts on its own"))

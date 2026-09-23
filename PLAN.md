@@ -334,7 +334,7 @@ HTTP and TCP health checks in tender-agent, unhealthy/degraded states, macOS not
 
 Let launchd handle crashes. Never restart a running process because one health check failed.
 
-## Phase 4 — Phone
+## Phase 4 — Phone ✅
 
 Status page via `tailscale serve`, Restart (on by default, confirmed, tailnet login only), web push alerts, per-service `serve:` sharing with Open links.
 
