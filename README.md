@@ -41,7 +41,7 @@ it, and it isn't a general process manager. See [PLAN.md](PLAN.md) for the produ
 Requires macOS 14 or later and Swift 6 (Xcode 16+).
 
 ```bash
-git clone https://github.com/sturdynut/Up.git shire && cd shire
+git clone https://github.com/sturdynut/Shire.git shire && cd shire
 make test           # run the test suite
 make install        # the `shire` command → ~/.local/bin/shire (PREFIX=… to change)
 make install-app    # Shire.app → ~/Applications, opens it, adds it to Login Items
