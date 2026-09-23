@@ -14,19 +14,19 @@ breaks (on the Mac and on your phone), and explains the likely cause in plain wo
 
 ```text
 $ shire status
-NAME             PROCESS         HEALTH
-postgres         external        healthy · port 5432 open · 1 ms
-tradingview      running         healthy · port 9222 open · 0 ms
-doulasimply-api  running         healthy · HTTP 200 · 22 ms
-doulasimply-web  crash-looping   unhealthy · connection refused · for 3m
-                 exit 127, 14 failures in 5m
-                 ↳ pnpm moved: nvm switched versions since the last apply. Run `shire apply` to re-resolve.
+NAME          PROCESS         HEALTH
+postgres      external        healthy · port 5432 open · 1 ms
+tradingview   running         healthy · port 9222 open · 0 ms
+seedbank-api  running         healthy · HTTP 200 · 22 ms
+seedbank-web  crash-looping   unhealthy · connection refused · for 3m
+              exit 127, 14 failures in 5m
+              ↳ pnpm moved: nvm switched versions since the last apply. Run `shire apply` to re-resolve.
 
 SYSTEM
-shire-agent      running · pid 17925
-keep-awake       active · on power
-tailscale        connected · mac-mini · 100.101.4.12
-readiness        1 warning · run `shire doctor`
+shire-agent                   running · pid 17925
+keep-awake                    active · on power
+tailscale                     connected · mac-mini · 100.101.4.12
+readiness                     1 warning · run `shire doctor`
 ```
 
 Shire is Mac-only, local-first and deliberately small. It configures and watches `launchd` rather than replacing
@@ -98,7 +98,7 @@ services:
     args: [dist/index.js]
     cwd: ~/Code/app/server
     build: pnpm build             # runs on apply (when changed) and on `shire restart`
-    envFile: .env.demo            # read at start; values never go into the plist
+    envFile: .env                 # read at start; values never go into the plist
     env: { NODE_ENV: production }
     dependsOn: [postgres]         # starts after postgres answers its health check
     restart: always               # always | on-failure | never
