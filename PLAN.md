@@ -18,12 +18,12 @@ UI designs (light and dark, Mac and phone): https://claude.ai/artifact/NB48q5ZLn
 
 | Service | What | How Shire treats it |
 |---|---|---|
-| `doulasimply-api` | DoulaSimply API (`~/Code/DoulaSimply/server`), port 3001 | managed, built with `pnpm build`, run with `node dist/index.js` |
-| `doulasimply-web` | DoulaSimply web app (`~/Code/DoulaSimply/web`), port 5174 | managed, built with `pnpm build`, served with `pnpm preview`, shared on the tailnet |
+| `seedbank-api` | Seedbank API (`~/Code/seedbank/server`), port 3001 | managed, built with `pnpm build`, run with `node dist/index.js` |
+| `seedbank-web` | Seedbank web app (`~/Code/seedbank/web`), port 5174 | managed, built with `pnpm build`, served with `pnpm preview`, shared on the tailnet |
 | `postgres` | Homebrew `postgresql@16` | **external**: watched, not managed (`brew services` owns it) |
 | `tradingview` | TradingView Desktop with `--remote-debugging-port=9222` | managed GUI app, so the TradingView MCP works whenever Claude Code starts it |
 
-**DoulaSimply on this Mac is a demo/staging copy with seed data only.** It uses its own local database (`.env.demo`), never the Neon or production URLs. Production stays on AWS. Real client data (PHI) never runs on this Mac.
+**Seedbank on this Mac is a staging copy with sample data.** It uses its own local database (`.env.staging`), never production's. Production runs elsewhere.
 
 **The TradingView MCP itself is not a service.** It uses stdio, so Claude Code launches it per session. What Shire keeps running is TradingView Desktop with the debug port open.
 
@@ -31,7 +31,7 @@ UI designs (light and dark, Mac and phone): https://claude.ai/artifact/NB48q5ZLn
 
 ## Primary use cases
 
-- Keep the DoulaSimply demo running and reachable from your phone
+- Keep a staging copy of a web app (Seedbank) running and reachable from your phone
 - Keep TradingView Desktop open with its debug port for the MCP
 - Watch services Shire doesn't own (Postgres via `brew services`)
 - Ensure Tailscale is available
@@ -115,22 +115,22 @@ services:
     external: homebrew.mxcl.postgresql@16   # watched, not managed
     health: { type: tcp, port: 5432 }
 
-  doulasimply-api:
+  seedbank-api:
     command: node
     args: [dist/index.js]
     build: pnpm build
-    cwd: ~/Code/DoulaSimply/server
-    envFile: .env.demo       # local demo database, seed data only
+    cwd: ~/Code/seedbank/server
+    envFile: .env.staging    # local staging database, sample data only
     dependsOn: [postgres]
     health: { type: tcp, port: 3001 }
 
-  doulasimply-web:
+  seedbank-web:
     command: pnpm
     args: [preview, --port, "5174"]
     build: pnpm build
-    cwd: ~/Code/DoulaSimply/web
+    cwd: ~/Code/seedbank/web
     serve: 443               # tailscale serve → https://mac-mini.<tailnet>.ts.net
-    dependsOn: [doulasimply-api]
+    dependsOn: [seedbank-api]
     health: { type: http, url: http://localhost:5174 }
 
   tradingview:
@@ -164,7 +164,7 @@ launchd starts services with `PATH=/usr/bin:/bin:/usr/sbin:/sbin` and does not e
 
 - Compare the generated plist with the installed one; reload only services that changed. `apply` never restarts everything.
 - Use `launchctl bootstrap` / `bootout`, not the deprecated `load` / `unload`.
-- Show what will happen before applying ("Apply starts tradingview, restarts doulasimply-web").
+- Show what will happen before applying ("Apply starts tradingview, restarts seedbank-web").
 - Respect `dependsOn` for start order (postgres → api → web).
 
 ## Service kinds
@@ -281,8 +281,8 @@ shire run <service>    # the wrapper launchd calls (not usually run by hand)
 $ shire status
 NAME              PROCESS        HEALTH
 postgres          external       healthy
-doulasimply-api   running        healthy
-doulasimply-web   crash-looping  exit 127 (pnpm path moved: nvm)
+seedbank-api   running        healthy
+seedbank-web   crash-looping  exit 127 (pnpm path moved: nvm)
 tradingview       running        port 9222 open
 tailscale         running        connected
 keep-awake        active         on power
@@ -296,7 +296,7 @@ readiness: 1 warning (run `shire doctor`)
 
 ## Menu bar
 
-Answers one question at a glance: **is my little Mac server okay?** One icon with a green/amber/red dot. The popover shows the overall state, each service, Tailscale, keep-awake, the next action ("View doulasimply-web logs…"), readiness and alert status.
+Answers one question at a glance: **is my little Mac server okay?** One icon with a green/amber/red dot. The popover shows the overall state, each service, Tailscale, keep-awake, the next action ("View seedbank-web logs…"), readiness and alert status.
 
 ## Window
 
@@ -322,7 +322,7 @@ Light and dark follow macOS.
 - start/stop/restart, `status`, crash-loop detection
 - env, `envFile`, `build:` step, stdout/stderr logs with rotation
 
-**Done when** `shire apply` brings up postgres (watched), the DoulaSimply demo and TradingView with its debug port, and a moved nvm path shows as "crash-looping, exit 127, pnpm path moved" rather than silent failure.
+**Done when** `shire apply` brings up postgres (watched), the Seedbank staging copy and TradingView with its debug port, and a moved nvm path shows as "crash-looping, exit 127, pnpm path moved" rather than silent failure.
 
 ## Phase 2 — Server mode and readiness ✅
 
@@ -356,7 +356,7 @@ Service page, config.yaml with live checks, Readiness, Alerts. Light and dark.
 | FileVault | Stays on. Log in after restarts; Readiness treats it as accepted. |
 | Phone Restart | On by default |
 | Third-party services | None. Strictly local, except Apple push for phone alerts. |
-| DoulaSimply | Demo/staging with seed data; production stays on AWS; no real PHI |
+| Seedbank | A staging copy with sample data runs here; production runs elsewhere |
 | TradingView | Keep TradingView Desktop running with debug port 9222; the MCP stays stdio |
 | Minimum macOS | **14 Sonoma**: MenuBarExtra, Observation and SMAppService are all available. (This Mac runs 26.) |
 
@@ -399,7 +399,7 @@ Sources/
 
 # First dogfooding setup
 
-Start with the config above: postgres (external), the DoulaSimply demo, and TradingView. Run it continuously for at least a week. Track what fails, what needs Terminal, what state is confusing, what information you keep wanting, and what actions you keep repeating. Those pain points drive the next features, including whether anything in "Cut from v1" comes back.
+Start with the config above: postgres (external), the Seedbank staging copy, and TradingView. Run it continuously for at least a week. Track what fails, what needs Terminal, what state is confusing, what information you keep wanting, and what actions you keep repeating. Those pain points drive the next features, including whether anything in "Cut from v1" comes back.
 
 ---
 
@@ -416,11 +416,3 @@ The workflow feels boring:
 7. When something breaks, you hear about it without looking.
 8. Configuration changes are a YAML edit plus `shire apply`.
 9. You rarely need to open Terminal to babysit anything.
-
----
-
-# Still to confirm before Phase 1 is done
-
-- **DoulaSimply demo database:** create a local `doulasimply_demo` database, seed it (`pnpm db:seed`), and write `server/.env.demo` pointing at it. Confirm the demo's auth secrets and seeded logins.
-- **DoulaSimply production start:** confirm `node dist/index.js` is the right production entry for the server, and whether the API has a real health endpoint to use instead of a TCP check.
-- The web app's `vite.config.ts` already shares its `/trpc` and `/api/auth` proxy between dev and preview, so `pnpm preview` on :5174 reaches the API on :3001.

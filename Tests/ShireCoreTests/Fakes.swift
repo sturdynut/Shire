@@ -115,22 +115,22 @@ services:
     external: homebrew.mxcl.postgresql@16
     health: { type: tcp, port: 5432 }
 
-  doulasimply-api:
+  seedbank-api:
     command: node
     args: [dist/index.js]
     build: pnpm build
-    cwd: ~/Code/DoulaSimply/server
+    cwd: ~/Code/seedbank/server
     envFile: .env.demo
     dependsOn: [postgres]
     health: { type: tcp, port: 3001 }
 
-  doulasimply-web:
+  seedbank-web:
     command: pnpm
     args: [preview, --port, "5174"]
     build: pnpm build
-    cwd: ~/Code/DoulaSimply/web
+    cwd: ~/Code/seedbank/web
     serve: 443
-    dependsOn: [doulasimply-api]
+    dependsOn: [seedbank-api]
     health: { type: http, url: http://localhost:5174 }
 
   tradingview:

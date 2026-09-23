@@ -62,13 +62,13 @@ struct LaunchAgentBuilderTests {
 
     @Test func webServicePlist() throws {
         let config = try ConfigLoader.parse(planConfigYAML)
-        let web = plist(for: "doulasimply-web", config: config)
-        #expect(web["Label"] as? String == "com.shire.doulasimply-web")
-        #expect(web["WorkingDirectory"] as? String == "/Users/me/Code/DoulaSimply/web")
+        let web = plist(for: "seedbank-web", config: config)
+        #expect(web["Label"] as? String == "com.shire.seedbank-web")
+        #expect(web["WorkingDirectory"] as? String == "/Users/me/Code/seedbank/web")
         #expect(web["KeepAlive"] as? Bool == true)
         #expect(web["RunAtLoad"] as? Bool == true)
         let args = try #require(web["ProgramArguments"] as? [String])
-        #expect(Array(args.prefix(3)) == ["/Users/me/.local/bin/shire", "run", "doulasimply-web"])
+        #expect(Array(args.prefix(3)) == ["/Users/me/.local/bin/shire", "run", "seedbank-web"])
         #expect(Array(args.suffix(4)) == ["\(nvm22_14)/pnpm", "preview", "--port", "5174"])
         // Waits for its dependency's health endpoint before starting.
         let wait = try #require(args.firstIndex(of: "--wait-for"))
@@ -76,15 +76,15 @@ struct LaunchAgentBuilderTests {
         #expect(!args.contains("--env-file"))
         let env = try #require(web["EnvironmentVariables"] as? [String: String])
         #expect(env["PATH"]?.hasPrefix(nvm22_14) == true)
-        #expect(env["SHIRE_SERVICE"] == "doulasimply-web")
+        #expect(env["SHIRE_SERVICE"] == "seedbank-web")
     }
 
     @Test func envFileIsPassedAsAPathNeverAsValues() throws {
         let config = try ConfigLoader.parse(planConfigYAML)
-        let api = plist(for: "doulasimply-api", config: config)
+        let api = plist(for: "seedbank-api", config: config)
         let args = try #require(api["ProgramArguments"] as? [String])
         let index = try #require(args.firstIndex(of: "--env-file"))
-        #expect(args[index + 1] == "/Users/me/Code/DoulaSimply/server/.env.demo")
+        #expect(args[index + 1] == "/Users/me/Code/seedbank/server/.env.demo")
         #expect(args[args.firstIndex(of: "--wait-for")! + 1] == "127.0.0.1:5432")
     }
 
@@ -92,7 +92,7 @@ struct LaunchAgentBuilderTests {
         let config = try ConfigLoader.parse(planConfigYAML)
         let reconciler = Reconciler(paths: ShirePaths(home: URL(fileURLWithPath: "/Users/me")), launchControl: FakeLaunchControl())
         let all = reconciler.desiredPlists(config: config, resolved: planResolution(), shireExecutable: "/u")
-        #expect(Set(all.keys) == ["doulasimply-api", "doulasimply-web", "tradingview"])
+        #expect(Set(all.keys) == ["seedbank-api", "seedbank-web", "tradingview"])
     }
 
     @Test func restartPolicies() throws {
@@ -126,7 +126,7 @@ struct LaunchAgentBuilderTests {
 
     @Test func plistRoundTripsThroughXML() throws {
         let config = try ConfigLoader.parse(planConfigYAML)
-        let web = plist(for: "doulasimply-web", config: config)
+        let web = plist(for: "seedbank-web", config: config)
         let data = try LaunchAgentBuilder.data(for: web)
         let back = try #require(try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
         #expect(LaunchAgentBuilder.differences(installed: back, desired: web).isEmpty)
