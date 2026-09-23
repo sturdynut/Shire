@@ -29,6 +29,8 @@ public struct TenderPaths: Sendable, Equatable {
     public var agentLog: URL { logsDir.appending(path: "tender-agent.log") }
     public var incidentsFile: URL { stateDir.appending(path: "incidents.json") }
     public var alertsFile: URL { stateDir.appending(path: "alerts.jsonl") }
+    /// Touched by the menu bar app while it runs.
+    public var appHeartbeatFile: URL { stateDir.appending(path: "app-heartbeat") }
 
     public func stdoutLog(for service: String) -> URL { logsDir.appending(path: "\(service).stdout.log") }
     public func stderrLog(for service: String) -> URL { logsDir.appending(path: "\(service).stderr.log") }

@@ -185,7 +185,8 @@ public final class TenderAgent {
         AlertLog(url: paths.alertsFile).append(alert)
         lastAlert = alert
         log("alert: \(alert.title) — \(alert.body)")
-        if config?.alerts.macos ?? true {
+        // The menu bar app reads alerts.jsonl and posts them as Tender; only fall back when it isn't running.
+        if config?.alerts.macos ?? true, !AppPresence.isRunning(paths) {
             notifier.deliver(alert)
         }
     }

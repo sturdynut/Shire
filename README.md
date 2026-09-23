@@ -14,7 +14,11 @@ See [PLAN.md](PLAN.md) for the product plan.
   been unhealthy, and sends one macOS notification per incident (crash loop, unhealthy past `alerts.unhealthyFor`,
   a new readiness warning, "this Mac restarted") plus one when it recovers. `tender alerts` lists them.
 
-The phone page and the menu bar app come in later phases.
+- **Phase 5 + 6 (menu bar and window):** `Tender.app` puts a server icon with a status dot in the menu bar, opens
+  at login, posts alerts as real notifications from Tender, and has a window with each service's logs and likely
+  cause, config.yaml with live checks and an "Apply will" preview, Readiness and Alerts.
+
+The phone page comes next.
 
 ## Install
 
@@ -26,6 +30,12 @@ make install          # installs to ~/.local/bin/tender (PREFIX=… to change)
 ```
 
 LaunchAgents point at the installed binary, so install before running `tender apply`.
+
+```bash
+make install-app      # builds Tender.app, installs it to ~/Applications and opens it
+```
+
+The app runs actions (Restart, Apply) through the installed `tender` command, so install both.
 
 ## Use
 

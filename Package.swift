@@ -6,6 +6,7 @@ let package = Package(
     platforms: [.macOS(.v14)],
     products: [
         .executable(name: "tender", targets: ["tender"]),
+        .executable(name: "TenderApp", targets: ["TenderApp"]),
         .library(name: "TenderCore", targets: ["TenderCore"]),
     ],
     dependencies: [
@@ -21,6 +22,8 @@ let package = Package(
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
         ),
+        // The menu bar app. `make app` wraps this executable in Tender.app.
+        .executableTarget(name: "TenderApp", dependencies: ["TenderCore"]),
         .testTarget(name: "TenderCoreTests", dependencies: ["TenderCore"]),
     ]
 )

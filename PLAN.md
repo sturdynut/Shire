@@ -338,11 +338,11 @@ Let launchd handle crashes. Never restart a running process because one health c
 
 Status page via `tailscale serve`, Restart (on by default, confirmed, tailnet login only), web push alerts, per-service `serve:` sharing with Open links.
 
-## Phase 5 — Menu bar app
+## Phase 5 — Menu bar app ✅
 
 SwiftUI menu bar on the same Core library.
 
-## Phase 6 — Window
+## Phase 6 — Window ✅
 
 Service page, config.yaml with live checks, Readiness, Alerts. Light and dark.
 

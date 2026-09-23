@@ -83,89 +83,57 @@ struct Status: AsyncParsableCommand {
     @OptionGroup var options: ConfigOption
 
     func run() async throws {
-        let (paths, config) = try options.load()
-        let inspector = StatusInspector(paths: paths, launchControl: SystemLaunchControl(), crashLoop: config.alerts.crashLoop)
-        let names = DependencyOrder.sorted(config)
+        _ = try options.load() // fail early, with a readable message, on a broken config
+        let snapshot = await TenderSnapshot.build(paths: options.paths)
+        let nameWidth = max(6, (snapshot.services.map(\.name.count).max() ?? 0) + 2)
 
-        // Prefer the agent's tracked health (it knows how long a service has been unhealthy); check directly otherwise.
-        let agentState = AgentState.read(from: paths.agentStateFile).flatMap { $0.isFresh() ? $0 : nil }
-        let tracked = agentState?.services ?? [:]
-        var health: [String: HealthResult] = [:]
-        var healthNote: [String: String] = [:]
-        let now = Date()
-        for (name, state) in tracked {
-            health[name] = state.healthy ? .healthy(detail: state.detail) : .unhealthy(detail: state.detail)
-            healthNote[name] = state.healthy ? "checked \(Readiness.describe(now.timeIntervalSince(state.lastChecked))) ago"
-                                             : "for \(Readiness.describe(now.timeIntervalSince(state.since)))"
-        }
-        let untracked = names.filter { health[$0] == nil && config.services[$0]!.health != nil }
-        await withTaskGroup(of: (String, HealthResult).self) { group in
-            for name in untracked {
-                let check = config.services[name]!.health!
-                group.addTask { (name, await HealthProbe.check(check)) }
-            }
-            for await (name, result) in group {
-                health[name] = result
-            }
-        }
-
-        var statuses: [ServiceStatus] = []
-        for name in names {
-            let service = config.services[name]!
-            let state = inspector.processState(name: name, service: service)
-            let cause = inspector.likelyCause(name: name, service: service, state: state, dependencyHealth: health)
-            statuses.append(ServiceStatus(name: name, process: state, health: health[name], cause: cause))
-        }
-
-        let nameWidth = max(6, (names.map(\.count).max() ?? 0) + 2)
         print(Terminal.bold(Terminal.pad("NAME", nameWidth) + Terminal.pad("PROCESS", 16) + "HEALTH"))
-        for status in statuses {
+        for service in snapshot.services {
             let process: String
-            switch status.process {
-            case .running, .external(true, _): process = Terminal.green(status.process.label)
-            case .crashLooping: process = Terminal.red(status.process.label)
-            case .exited(let code) where code != 0: process = Terminal.red(status.process.label)
-            default: process = Terminal.amber(status.process.label)
+            switch service.process {
+            case .running, .external(true, _): process = Terminal.green(service.process.label)
+            case .crashLooping: process = Terminal.red(service.process.label)
+            case .exited(let code) where code != 0: process = Terminal.red(service.process.label)
+            default: process = Terminal.amber(service.process.label)
             }
             let healthText: String
-            switch status.health {
+            switch service.health {
             case .healthy(let detail)?: healthText = Terminal.green("healthy") + Terminal.dim(" · \(detail)")
             case .unhealthy(let detail)?:
-                let note = healthNote[status.name].map { " · \($0)" } ?? ""
+                let note = service.healthNote.map { " · \($0)" } ?? ""
                 healthText = Terminal.red("unhealthy") + Terminal.dim(" · \(detail)\(note)")
             case nil: healthText = Terminal.dim("no check")
             }
-            print(Terminal.pad(status.name, nameWidth) + Terminal.pad(process, 16) + healthText)
-            if case .crashLooping(let code, let exits, let window) = status.process {
+            print(Terminal.pad(service.name, nameWidth) + Terminal.pad(process, 16) + healthText)
+            if case .crashLooping(let code, let exits, let window) = service.process {
                 print(Terminal.pad("", nameWidth) + Terminal.dim("exit \(code), \(exits) failures in \(window)"))
             }
-            if let cause = status.cause {
+            if let cause = service.cause {
                 print(Terminal.pad("", nameWidth) + Terminal.amber("↳ ") + cause)
             }
         }
 
-        let facts = SystemProbe(paths: paths).gather()
-        let system = SystemSummary(facts: facts, config: config)
-        print("")
-        print(Terminal.bold("SYSTEM"))
-        for row in system.rows {
-            let value: String
-            switch row.level {
-            case .ok: value = Terminal.green(row.value)
-            case .info: value = Terminal.dim(row.value)
-            case .warn: value = Terminal.amber(row.value)
+        if let system = snapshot.system {
+            print("")
+            print(Terminal.bold("SYSTEM"))
+            for row in system.rows {
+                let value: String
+                switch row.level {
+                case .ok: value = Terminal.green(row.value)
+                case .info: value = Terminal.dim(row.value)
+                case .warn: value = Terminal.amber(row.value)
+                }
+                print(Terminal.pad(row.name, nameWidth + 16) + value)
             }
-            print(Terminal.pad(row.name, nameWidth + 16) + value)
         }
 
-        let problems = statuses.filter { $0.process.isProblem || $0.health?.isHealthy == false }.map(\.name) + system.problems
+        let problems = snapshot.services.filter(\.needsAttention).map(\.name) + (snapshot.system?.problems ?? [])
         print("")
         if problems.isEmpty {
-            let what = statuses.count == 1 ? "The service is" : "All \(statuses.count) services are"
+            let what = snapshot.services.count == 1 ? "The service is" : "All \(snapshot.services.count) services are"
             print(Terminal.green("●") + " \(what) healthy.")
         } else {
-            let healthy = statuses.count - statuses.filter { problems.contains($0.name) }.count
-            print(Terminal.amber("●") + " \(healthy) of \(statuses.count) services healthy. Needs attention: \(problems.joined(separator: ", ")).")
+            print(Terminal.amber("●") + " \(snapshot.healthyCount) of \(snapshot.services.count) services healthy. Needs attention: \(problems.joined(separator: ", ")).")
         }
     }
 }
