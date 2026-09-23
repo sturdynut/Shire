@@ -7,7 +7,7 @@ struct EnvFileTests {
     @Test func parsesCommonShapes() {
         let values = EnvFile.parse("""
         # demo database
-        DATABASE_URL=postgresql://me@localhost:5432/seedbank_demo
+        DATABASE_URL=postgresql://me@localhost:5432/bagend_demo
         export NODE_ENV=production
         QUOTED="hello world"
         SINGLE='a # not a comment'
@@ -16,7 +16,7 @@ struct EnvFileTests {
         not a line
         =novalue
         """)
-        #expect(values["DATABASE_URL"] == "postgresql://me@localhost:5432/seedbank_demo")
+        #expect(values["DATABASE_URL"] == "postgresql://me@localhost:5432/bagend_demo")
         #expect(values["NODE_ENV"] == "production")
         #expect(values["QUOTED"] == "hello world")
         #expect(values["SINGLE"] == "a # not a comment")
@@ -102,9 +102,9 @@ struct StatusTests {
                                         fileExists: { !$0.contains("/.nvm/") && FileManager.default.fileExists(atPath: $0) },
                                         directoryExists: { _ in true })
         let cause = inspector.likelyCause(
-            name: "seedbank-web", service: config.services["seedbank-web"]!,
+            name: "bagend-web", service: config.services["bagend-web"]!,
             state: .crashLooping(lastExit: 127, exits: 14, window: rule.window),
-            dependencyHealth: ["seedbank-api": .healthy(detail: "ok")])
+            dependencyHealth: ["bagend-api": .healthy(detail: "ok")])
         #expect(cause == "pnpm moved: nvm switched versions since the last apply. Run `shire apply` to re-resolve.")
     }
 
@@ -113,9 +113,9 @@ struct StatusTests {
         let config = try ConfigLoader.parse(planConfigYAML)
         let inspector = StatusInspector(paths: home.paths, launchControl: FakeLaunchControl(), crashLoop: rule, directoryExists: { _ in true })
         let cause = inspector.likelyCause(
-            name: "seedbank-api", service: config.services["seedbank-api"]!,
+            name: "bagend-api", service: config.services["bagend-api"]!,
             state: .exited(code: 75), dependencyHealth: ["postgres": .unhealthy(detail: "port 5432 closed")])
-        #expect(cause == "postgres isn’t reachable (port 5432 closed), so seedbank-api is waiting for it.")
+        #expect(cause == "postgres isn’t reachable (port 5432 closed), so bagend-api is waiting for it.")
     }
 
     @Test func likelyCauseReadsPortClashesFromTheLog() throws {

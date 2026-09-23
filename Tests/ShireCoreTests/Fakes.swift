@@ -115,22 +115,22 @@ services:
     external: homebrew.mxcl.postgresql@16
     health: { type: tcp, port: 5432 }
 
-  seedbank-api:
+  bagend-api:
     command: node
     args: [dist/index.js]
     build: pnpm build
-    cwd: ~/Code/seedbank/server
+    cwd: ~/Code/bagend/server
     envFile: .env.demo
     dependsOn: [postgres]
     health: { type: tcp, port: 3001 }
 
-  seedbank-web:
+  bagend-web:
     command: pnpm
     args: [preview, --port, "5174"]
     build: pnpm build
-    cwd: ~/Code/seedbank/web
+    cwd: ~/Code/bagend/web
     serve: 443
-    dependsOn: [seedbank-api]
+    dependsOn: [bagend-api]
     health: { type: http, url: http://localhost:5174 }
 
   tradingview:

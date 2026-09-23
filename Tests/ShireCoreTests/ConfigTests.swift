@@ -50,11 +50,11 @@ struct ConfigLoaderTests {
         #expect(config.logs.maxSize.bytes == 10 << 20)
         #expect(config.services.count == 4)
 
-        let web = try #require(config.services["seedbank-web"])
+        let web = try #require(config.services["bagend-web"])
         #expect(web.command == "pnpm")
         #expect(web.args == ["preview", "--port", "5174"])
         #expect(web.serve == 443)
-        #expect(web.dependsOn == ["seedbank-api"])
+        #expect(web.dependsOn == ["bagend-api"])
         #expect(web.restart == .always)
         #expect(web.health?.endpoint == HostPort(host: "localhost", port: 5174))
 
@@ -62,7 +62,7 @@ struct ConfigLoaderTests {
         #expect(postgres.isExternal)
         #expect(postgres.health?.endpoint == HostPort(host: "127.0.0.1", port: 5432))
 
-        #expect(config.managedServiceNames == ["seedbank-api", "seedbank-web", "tradingview"])
+        #expect(config.managedServiceNames == ["bagend-api", "bagend-web", "tradingview"])
     }
 
     @Test func defaultsWhenSectionsAreMissing() throws {
@@ -127,7 +127,7 @@ struct ValidatorTests {
     @Test func planConfigHasOnlyVersionManagerWarnings() throws {
         let found = try issues(planConfigYAML, resolved: planResolution())
         #expect(found.allSatisfy { $0.severity == .warning })
-        #expect(Set(found.compactMap(\.service)) == ["seedbank-api", "seedbank-web"])
+        #expect(Set(found.compactMap(\.service)) == ["bagend-api", "bagend-web"])
         #expect(found.allSatisfy { $0.message.contains("nvm") })
     }
 
@@ -190,7 +190,7 @@ struct ValidatorTests {
         #expect(found.contains { $0.message == "an http health check needs a “url”." })
     }
 
-    @Test(arguments: [("api", true), ("seedbank-web", true), ("2fa", true), ("Api", false), ("-x", false), ("a_b", false), ("", false)])
+    @Test(arguments: [("api", true), ("bagend-web", true), ("2fa", true), ("Api", false), ("-x", false), ("a_b", false), ("", false)])
     func serviceNames(name: String, valid: Bool) {
         #expect(Validator.isValidName(name) == valid)
     }
@@ -201,8 +201,8 @@ struct DependencyOrderTests {
     @Test func dependenciesComeFirst() throws {
         let config = try ConfigLoader.parse(planConfigYAML)
         let order = DependencyOrder.sorted(config)
-        #expect(order.firstIndex(of: "postgres")! < order.firstIndex(of: "seedbank-api")!)
-        #expect(order.firstIndex(of: "seedbank-api")! < order.firstIndex(of: "seedbank-web")!)
+        #expect(order.firstIndex(of: "postgres")! < order.firstIndex(of: "bagend-api")!)
+        #expect(order.firstIndex(of: "bagend-api")! < order.firstIndex(of: "bagend-web")!)
         #expect(order.count == 4)
     }
 

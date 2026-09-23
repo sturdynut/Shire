@@ -30,7 +30,7 @@ struct WebPushTests {
         let auth = WebPush.randomBytes(16)
         let subscription = PushSubscription(endpoint: "https://web.push.apple.com/abc",
                                             keys: .init(p256dh: WebPush.base64URL(ua.publicKey.x963Representation), auth: WebPush.base64URL(auth)))
-        let payload = Data(#"{"title":"seedbank-web is crash-looping"}"#.utf8)
+        let payload = Data(#"{"title":"bagend-web is crash-looping"}"#.utf8)
         let body = try WebPush.encrypt(payload, for: subscription)
         #expect(try decrypt(body, uaKey: ua, auth: auth) == payload)
         #expect(body.count == 16 + 4 + 1 + 65 + payload.count + 1 + 16)

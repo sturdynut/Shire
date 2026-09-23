@@ -18,22 +18,22 @@ services:
     external: homebrew.mxcl.postgresql@16
     health: { type: tcp, port: 5432 }
 
-  # Seedbank, a small web app: an API and the web front end that talks to it.
-  seedbank-api:
+  # Bag End, a small web app: an API and the web front end that talks to it.
+  bagend-api:
     command: node
     args: [dist/index.js]
     build: pnpm build
-    cwd: ~/Code/seedbank/server
+    cwd: ~/Code/bagend/server
     envFile: .env
     dependsOn: [postgres]
     health: { type: tcp, port: 3001 }
 
-  seedbank-web:
+  bagend-web:
     command: pnpm
     args: [preview, --port, "5174"]
     build: pnpm build
-    cwd: ~/Code/seedbank/web
-    dependsOn: [seedbank-api]
+    cwd: ~/Code/bagend/web
+    dependsOn: [bagend-api]
     health: { type: http, url: http://localhost:5174 }
 
   # Keeps TradingView Desktop open with its debug port so the TradingView MCP works.

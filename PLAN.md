@@ -18,12 +18,12 @@ UI designs (light and dark, Mac and phone): https://claude.ai/artifact/NB48q5ZLn
 
 | Service | What | How Shire treats it |
 |---|---|---|
-| `seedbank-api` | Seedbank API (`~/Code/seedbank/server`), port 3001 | managed, built with `pnpm build`, run with `node dist/index.js` |
-| `seedbank-web` | Seedbank web app (`~/Code/seedbank/web`), port 5174 | managed, built with `pnpm build`, served with `pnpm preview`, shared on the tailnet |
+| `bagend-api` | Bag End API (`~/Code/bagend/server`), port 3001 | managed, built with `pnpm build`, run with `node dist/index.js` |
+| `bagend-web` | Bag End web app (`~/Code/bagend/web`), port 5174 | managed, built with `pnpm build`, served with `pnpm preview`, shared on the tailnet |
 | `postgres` | Homebrew `postgresql@16` | **external**: watched, not managed (`brew services` owns it) |
 | `tradingview` | TradingView Desktop with `--remote-debugging-port=9222` | managed GUI app, so the TradingView MCP works whenever Claude Code starts it |
 
-**Seedbank on this Mac is a staging copy with sample data.** It uses its own local database (`.env.staging`), never production's. Production runs elsewhere.
+**Bag End on this Mac is a staging copy with sample data.** It uses its own local database (`.env.staging`), never production's. Production runs elsewhere.
 
 **The TradingView MCP itself is not a service.** It uses stdio, so Claude Code launches it per session. What Shire keeps running is TradingView Desktop with the debug port open.
 
@@ -31,7 +31,7 @@ UI designs (light and dark, Mac and phone): https://claude.ai/artifact/NB48q5ZLn
 
 ## Primary use cases
 
-- Keep a staging copy of a web app (Seedbank) running and reachable from your phone
+- Keep a staging copy of a web app (Bag End) running and reachable from your phone
 - Keep TradingView Desktop open with its debug port for the MCP
 - Watch services Shire doesn't own (Postgres via `brew services`)
 - Ensure Tailscale is available
@@ -115,22 +115,22 @@ services:
     external: homebrew.mxcl.postgresql@16   # watched, not managed
     health: { type: tcp, port: 5432 }
 
-  seedbank-api:
+  bagend-api:
     command: node
     args: [dist/index.js]
     build: pnpm build
-    cwd: ~/Code/seedbank/server
+    cwd: ~/Code/bagend/server
     envFile: .env.staging    # local staging database, sample data only
     dependsOn: [postgres]
     health: { type: tcp, port: 3001 }
 
-  seedbank-web:
+  bagend-web:
     command: pnpm
     args: [preview, --port, "5174"]
     build: pnpm build
-    cwd: ~/Code/seedbank/web
+    cwd: ~/Code/bagend/web
     serve: 443               # tailscale serve → https://mac-mini.<tailnet>.ts.net
-    dependsOn: [seedbank-api]
+    dependsOn: [bagend-api]
     health: { type: http, url: http://localhost:5174 }
 
   tradingview:
@@ -164,7 +164,7 @@ launchd starts services with `PATH=/usr/bin:/bin:/usr/sbin:/sbin` and does not e
 
 - Compare the generated plist with the installed one; reload only services that changed. `apply` never restarts everything.
 - Use `launchctl bootstrap` / `bootout`, not the deprecated `load` / `unload`.
-- Show what will happen before applying ("Apply starts tradingview, restarts seedbank-web").
+- Show what will happen before applying ("Apply starts tradingview, restarts bagend-web").
 - Respect `dependsOn` for start order (postgres → api → web).
 
 ## Service kinds
@@ -281,8 +281,8 @@ shire run <service>    # the wrapper launchd calls (not usually run by hand)
 $ shire status
 NAME              PROCESS        HEALTH
 postgres          external       healthy
-seedbank-api   running        healthy
-seedbank-web   crash-looping  exit 127 (pnpm path moved: nvm)
+bagend-api        running        healthy
+bagend-web        crash-looping  exit 127 (pnpm path moved: nvm)
 tradingview       running        port 9222 open
 tailscale         running        connected
 keep-awake        active         on power
@@ -296,7 +296,7 @@ readiness: 1 warning (run `shire doctor`)
 
 ## Menu bar
 
-Answers one question at a glance: **is my little Mac server okay?** One icon with a green/amber/red dot. The popover shows the overall state, each service, Tailscale, keep-awake, the next action ("View seedbank-web logs…"), readiness and alert status.
+Answers one question at a glance: **is my little Mac server okay?** One icon with a green/amber/red dot. The popover shows the overall state, each service, Tailscale, keep-awake, the next action ("View bagend-web logs…"), readiness and alert status.
 
 ## Window
 
@@ -322,7 +322,7 @@ Light and dark follow macOS.
 - start/stop/restart, `status`, crash-loop detection
 - env, `envFile`, `build:` step, stdout/stderr logs with rotation
 
-**Done when** `shire apply` brings up postgres (watched), the Seedbank staging copy and TradingView with its debug port, and a moved nvm path shows as "crash-looping, exit 127, pnpm path moved" rather than silent failure.
+**Done when** `shire apply` brings up postgres (watched), the Bag End staging copy and TradingView with its debug port, and a moved nvm path shows as "crash-looping, exit 127, pnpm path moved" rather than silent failure.
 
 ## Phase 2 — Server mode and readiness ✅
 
@@ -356,7 +356,7 @@ Service page, config.yaml with live checks, Readiness, Alerts. Light and dark.
 | FileVault | Stays on. Log in after restarts; Readiness treats it as accepted. |
 | Phone Restart | On by default |
 | Third-party services | None. Strictly local, except Apple push for phone alerts. |
-| Seedbank | A staging copy with sample data runs here; production runs elsewhere |
+| Bag End | A staging copy with sample data runs here; production runs elsewhere |
 | TradingView | Keep TradingView Desktop running with debug port 9222; the MCP stays stdio |
 | Minimum macOS | **14 Sonoma**: MenuBarExtra, Observation and SMAppService are all available. (This Mac runs 26.) |
 
@@ -399,7 +399,7 @@ Sources/
 
 # First dogfooding setup
 
-Start with the config above: postgres (external), the Seedbank staging copy, and TradingView. Run it continuously for at least a week. Track what fails, what needs Terminal, what state is confusing, what information you keep wanting, and what actions you keep repeating. Those pain points drive the next features, including whether anything in "Cut from v1" comes back.
+Start with the config above: postgres (external), the Bag End staging copy, and TradingView. Run it continuously for at least a week. Track what fails, what needs Terminal, what state is confusing, what information you keep wanting, and what actions you keep repeating. Those pain points drive the next features, including whether anything in "Cut from v1" comes back.
 
 ---
 

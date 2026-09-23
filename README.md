@@ -17,8 +17,8 @@ $ shire status
 NAME          PROCESS         HEALTH
 postgres      external        healthy · port 5432 open · 1 ms
 tradingview   running         healthy · port 9222 open · 0 ms
-seedbank-api  running         healthy · HTTP 200 · 22 ms
-seedbank-web  crash-looping   unhealthy · connection refused · for 3m
+bagend-api    running         healthy · HTTP 200 · 22 ms
+bagend-web    crash-looping   unhealthy · connection refused · for 3m
               exit 127, 14 failures in 5m
               ↳ pnpm moved: nvm switched versions since the last apply. Run `shire apply` to re-resolve.
 

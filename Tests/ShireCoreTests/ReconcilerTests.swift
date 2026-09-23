@@ -20,15 +20,15 @@ struct ReconcilerTests {
         let plan = reconciler.plan(config: config, desired: desired)
 
         #expect(actions(plan)["postgres"] == .watch(label: "homebrew.mxcl.postgresql@16"))
-        #expect(actions(plan)["seedbank-api"] == .install)
-        #expect(actions(plan)["seedbank-web"] == .install)
+        #expect(actions(plan)["bagend-api"] == .install)
+        #expect(actions(plan)["bagend-web"] == .install)
         #expect(actions(plan)["tradingview"] == .install)
 
         let outcomes = reconciler.apply(plan, config: config, resolved: planResolution(), build: true)
         #expect(outcomes.allSatisfy { if case .done = $0.result { return true } else { return false } })
         // Services with no dependencies go first; the API waits on postgres, the web app on the API.
-        #expect(control.calls == ["bootstrap com.shire.tradingview", "bootstrap com.shire.seedbank-api", "bootstrap com.shire.seedbank-web"])
-        #expect(builder.log.all == ["seedbank-api: pnpm build", "seedbank-web: pnpm build"])
+        #expect(control.calls == ["bootstrap com.shire.tradingview", "bootstrap com.shire.bagend-api", "bootstrap com.shire.bagend-web"])
+        #expect(builder.log.all == ["bagend-api: pnpm build", "bagend-web: pnpm build"])
         #expect(FileManager.default.fileExists(atPath: home.paths.plist(forLabel: "com.shire.tradingview").path))
     }
 
@@ -56,12 +56,12 @@ struct ReconcilerTests {
         let second = reconciler.desiredPlists(config: config, resolved: moved, shireExecutable: "/u")
         let plan = reconciler.plan(config: config, desired: second)
 
-        guard case .update(let reasons) = actions(plan)["seedbank-web"] else {
+        guard case .update(let reasons) = actions(plan)["bagend-web"] else {
             Issue.record("web should restart")
             return
         }
         #expect(reasons.contains("command now \(nvm22_20)/pnpm"))
-        if case .update = actions(plan)["seedbank-api"] {} else { Issue.record("api should restart") }
+        if case .update = actions(plan)["bagend-api"] {} else { Issue.record("api should restart") }
         // TradingView doesn't use Node, so switching Node versions must not restart it.
         #expect(actions(plan)["tradingview"] == .unchanged)
     }
@@ -72,9 +72,9 @@ struct ReconcilerTests {
         let desired = reconciler.desiredPlists(config: config, resolved: planResolution(), shireExecutable: "/u")
         let outcomes = reconciler.apply(reconciler.plan(config: config, desired: desired), config: config, resolved: planResolution(), build: true)
 
-        let api = try #require(outcomes.first { $0.name == "seedbank-api" })
+        let api = try #require(outcomes.first { $0.name == "bagend-api" })
         #expect(api.result == .failed("build failed (pnpm build); left the running version alone"))
-        #expect(!control.calls.contains("bootstrap com.shire.seedbank-api"))
+        #expect(!control.calls.contains("bootstrap com.shire.bagend-api"))
         #expect(control.calls.contains("bootstrap com.shire.tradingview"))
     }
 
@@ -121,13 +121,13 @@ struct ReconcilerTests {
         let reconciler = Reconciler(paths: home.paths, launchControl: control, builder: builder)
         let desired = reconciler.desiredPlists(config: config, resolved: planResolution(), shireExecutable: "/u")
         _ = reconciler.apply(reconciler.plan(config: config, desired: desired), config: config, resolved: planResolution(), build: true)
-        try control.bootout("com.shire.seedbank-web")
+        try control.bootout("com.shire.bagend-web")
 
         let plan = reconciler.plan(config: config, desired: desired)
-        #expect(actions(plan)["seedbank-web"] == .start)
+        #expect(actions(plan)["bagend-web"] == .start)
         let before = builder.log.all.count
         _ = reconciler.apply(plan, config: config, resolved: planResolution(), build: true)
         #expect(builder.log.all.count == before)
-        #expect(control.isLoaded("com.shire.seedbank-web"))
+        #expect(control.isLoaded("com.shire.bagend-web"))
     }
 }
