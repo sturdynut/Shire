@@ -45,6 +45,9 @@ public struct Validator: Sendable {
 
         for name in names {
             let service = config.services[name]!
+            if name == LaunchAgentBuilder.reservedServiceName {
+                issues.append(.init(.error, name, "“\(name)” is reserved for tender-agent; pick another service name."))
+            }
             if !Self.isValidName(name) {
                 issues.append(.init(.error, name, "service names may use lowercase letters, digits and dashes, starting with a letter or digit."))
             }

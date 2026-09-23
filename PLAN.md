@@ -181,7 +181,7 @@ launchd throttles restarts (about 10 s). Tender detects repeated exits and repor
 
 ## Keep-awake
 
-A native power assertion (`IOPMAssertionCreateWithName`, prevent idle system sleep) held by tender-agent while server mode is on.
+A native power assertion (`IOPMAssertionCreateWithName`, prevent idle system sleep) held by tender-agent while server mode is on **and the Mac is on power**. On battery it's released so a laptop sleeps before the battery dies; `tender status` says so.
 
 Limits, surfaced in Readiness rather than hidden: a MacBook sleeps when the lid closes unless it's on power with an external display (clamshell). Preventing that needs root, so it's out of scope for v1.
 
@@ -322,7 +322,7 @@ Light and dark follow macOS.
 
 **Done when** `tender apply` brings up postgres (watched), the DoulaSimply demo and TradingView with its debug port, and a moved nvm path shows as "crash-looping, exit 127, pnpm path moved" rather than silent failure.
 
-## Phase 2 — Server mode and readiness
+## Phase 2 — Server mode and readiness ✅
 
 tender-agent, keep-awake assertion, Tailscale status, `tender doctor`, combined overall status.
 

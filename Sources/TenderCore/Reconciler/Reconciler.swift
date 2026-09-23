@@ -15,8 +15,19 @@ public struct PlannedChange {
     public var name: String
     public var action: Action
     public var plist: [String: Any]?
+    public var label: String
 
-    public var label: String { LaunchAgentBuilder.label(for: name) }
+    public init(name: String, action: Action, plist: [String: Any]?, label: String? = nil) {
+        self.name = name
+        self.action = action
+        self.plist = plist
+        self.label = label ?? LaunchAgentBuilder.label(for: name)
+    }
+
+    /// The name tender-agent appears under in plans and output.
+    public static let agentName = "tender-agent"
+
+    public var isAgent: Bool { label == LaunchAgentBuilder.agentLabel }
 
     public var summary: String {
         switch action {
@@ -124,9 +135,14 @@ public struct Reconciler: Sendable {
 
     // MARK: Plan
 
-    public func plan(config: TenderConfig, desired: [String: [String: Any]]) -> ApplyPlan {
+    /// `agentPlist` is tender-agent's LaunchAgent; nil leaves the agent out of the plan (tests of services alone).
+    public func plan(config: TenderConfig, desired: [String: [String: Any]], agentPlist: [String: Any]? = nil) -> ApplyPlan {
         var changes: [PlannedChange] = []
         let installed = Set(installedServices())
+
+        if let agentPlist {
+            changes.append(change(name: PlannedChange.agentName, label: LaunchAgentBuilder.agentLabel, desired: agentPlist))
+        }
 
         for name in installed.subtracting(config.managedServiceNames).sorted() {
             changes.append(PlannedChange(name: name, action: .remove, plist: nil))
@@ -139,22 +155,23 @@ public struct Reconciler: Sendable {
                 continue
             }
             guard let plist = desired[name] else { continue }
-            let label = LaunchAgentBuilder.label(for: name)
-            let url = paths.plist(forLabel: label)
-            guard let current = LaunchAgentBuilder.read(url) else {
-                changes.append(PlannedChange(name: name, action: .install, plist: plist))
-                continue
-            }
-            let reasons = LaunchAgentBuilder.differences(installed: current, desired: plist)
-            if !reasons.isEmpty {
-                changes.append(PlannedChange(name: name, action: .update(reasons: reasons), plist: plist))
-            } else if !launchControl.isLoaded(label) {
-                changes.append(PlannedChange(name: name, action: .start, plist: plist))
-            } else {
-                changes.append(PlannedChange(name: name, action: .unchanged, plist: plist))
-            }
+            changes.append(change(name: name, label: LaunchAgentBuilder.label(for: name), desired: plist))
         }
         return ApplyPlan(changes: changes)
+    }
+
+    private func change(name: String, label: String, desired plist: [String: Any]) -> PlannedChange {
+        guard let current = LaunchAgentBuilder.read(paths.plist(forLabel: label)) else {
+            return PlannedChange(name: name, action: .install, plist: plist, label: label)
+        }
+        let reasons = LaunchAgentBuilder.differences(installed: current, desired: plist)
+        if !reasons.isEmpty {
+            return PlannedChange(name: name, action: .update(reasons: reasons), plist: plist, label: label)
+        }
+        if !launchControl.isLoaded(label) {
+            return PlannedChange(name: name, action: .start, plist: plist, label: label)
+        }
+        return PlannedChange(name: name, action: .unchanged, plist: plist, label: label)
     }
 
     // MARK: Apply
@@ -187,12 +204,12 @@ public struct Reconciler: Sendable {
 
     private func install(_ change: PlannedChange, config: TenderConfig, resolved: ResolvedEnvironment, build: Bool,
                          progress: (String) -> Void) -> ApplyOutcome {
-        let service = config.services[change.name]!
+        let service = change.isAgent ? nil : config.services[change.name]
         guard let plist = change.plist else {
             return ApplyOutcome(name: change.name, result: .failed("no LaunchAgent could be generated"))
         }
 
-        if build, change.action != .start, let command = service.build {
+        if build, change.action != .start, let service, let command = service.build {
             progress("building \(change.name): \(command)")
             let environment = buildEnvironment(service: service, plist: plist)
             let cwd = service.cwd.map { PathExpander.expand($0, home: paths.home.path) }
@@ -216,6 +233,26 @@ public struct Reconciler: Sendable {
         case .start: return ApplyOutcome(name: change.name, result: .done("started"))
         default: return ApplyOutcome(name: change.name, result: .done("restarted"))
         }
+    }
+
+    /// Stops and removes every LaunchAgent Tender installed, tender-agent included. Logs and config stay.
+    public func uninstall() -> [ApplyOutcome] {
+        var outcomes: [ApplyOutcome] = []
+        let targets = installedServices().map { ($0, LaunchAgentBuilder.label(for: $0)) }
+            + [(PlannedChange.agentName, LaunchAgentBuilder.agentLabel)]
+        for (name, label) in targets {
+            let url = paths.plist(forLabel: label)
+            let present = FileManager.default.fileExists(atPath: url.path)
+            guard present || launchControl.isLoaded(label) else { continue }
+            do {
+                try launchControl.bootout(label)
+                try? FileManager.default.removeItem(at: url)
+                outcomes.append(ApplyOutcome(name: name, result: .done("stopped and removed")))
+            } catch {
+                outcomes.append(ApplyOutcome(name: name, result: .failed(String(describing: error))))
+            }
+        }
+        return outcomes
     }
 
     /// The environment a build (or anything run on the service's behalf) should see.

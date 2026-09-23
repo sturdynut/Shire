@@ -5,9 +5,12 @@ See [PLAN.md](PLAN.md) for the product plan.
 
 ## Status
 
-Phase 1 (the core) is in place: the `tender` command line, config validation, LaunchAgent management,
-logging with rotation, crash-loop detection and likely-cause messages. The menu bar app, tender-agent,
-alerts and the phone page come in later phases.
+- **Phase 1 (core):** the `tender` command line, config validation, LaunchAgent management, logging with rotation,
+  crash-loop detection and likely-cause messages.
+- **Phase 2 (server mode):** tender-agent keeps the Mac awake while on power, `tender doctor` checks whether the Mac
+  will keep serving without you, and `tender status` shows tender-agent, keep-awake, Tailscale and readiness.
+
+Health checks running continuously, alerts, the phone page and the menu bar app come in later phases.
 
 ## Install
 
@@ -33,6 +36,8 @@ tender status             # process state, health, likely cause
 tender logs <service> -f
 tender restart <service>  # runs the build step first; --no-build to skip
 tender stop|start <service>
+tender doctor             # updates, login, power, lid, disk, Tailscale, tender-agent
+tender uninstall          # remove every Tender LaunchAgent (config and logs stay)
 ```
 
 ## How it works
@@ -46,3 +51,6 @@ tender stop|start <service>
   restarts the services that use Node.
 - `external:` services (like Homebrew's Postgres) are watched, never managed.
 - `build:` runs on `apply` (for new or changed services) and on `restart`, never on launchd's automatic respawns.
+- `apply` also installs tender-agent (`com.tender.agent`). It re-reads config.yaml when it changes and holds a
+  `PreventUserIdleSystemSleep` assertion while `serverMode.keepAwake` is on and the Mac is on power; on battery it
+  lets go so the Mac can sleep. State is written to `~/Library/Application Support/Tender/agent.json`.

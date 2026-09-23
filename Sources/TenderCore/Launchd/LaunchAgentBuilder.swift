@@ -29,8 +29,29 @@ public enum LaunchAgentBuilder {
 
     public static func label(for service: String) -> String { labelPrefix + service }
 
+    /// tender-agent's label. The service name `agent` is reserved so the two can't collide.
+    public static let agentLabel = labelPrefix + reservedServiceName
+    public static let reservedServiceName = "agent"
+
+    /// The service a Tender label belongs to; nil for other labels and for tender-agent itself.
     public static func serviceName(fromLabel label: String) -> String? {
-        label.hasPrefix(labelPrefix) ? String(label.dropFirst(labelPrefix.count)) : nil
+        guard label.hasPrefix(labelPrefix), label != agentLabel else { return nil }
+        return String(label.dropFirst(labelPrefix.count))
+    }
+
+    /// tender-agent's own LaunchAgent: always running, restarted if it ever exits.
+    public static func agentPlist(executable: String, paths: TenderPaths) -> [String: Any] {
+        [
+            "Label": agentLabel,
+            "ProgramArguments": [executable, "agent", "--config", paths.configFile.path],
+            "RunAtLoad": true,
+            "KeepAlive": true,
+            "ThrottleInterval": 10,
+            "LimitLoadToSessionType": "Aqua",
+            "ProcessType": "Background",
+            "StandardOutPath": paths.agentLog.path,
+            "StandardErrorPath": paths.agentLog.path,
+        ]
     }
 
     /// The plist launchd runs. It always starts `tender run`, which owns logging, env files and dependency waits,

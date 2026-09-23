@@ -8,7 +8,7 @@ struct Tender: AsyncParsableCommand {
         commandName: "tender",
         abstract: "Keep a Mac in the state config.yaml describes: services running, healthy, and explained when they aren't.",
         version: "0.1.0",
-        subcommands: [Apply.self, Status.self, Start.self, Stop.self, Restart.self, Logs.self, Validate.self, Run.self]
+        subcommands: [Apply.self, Status.self, Doctor.self, Start.self, Stop.self, Restart.self, Logs.self, Validate.self, Run.self, Agent.self, Uninstall.self]
     )
 }
 
@@ -39,7 +39,8 @@ struct Apply: ParsableCommand {
 
         let reconciler = Reconciler(paths: paths, launchControl: SystemLaunchControl())
         let desired = reconciler.desiredPlists(config: config, resolved: resolved, tenderExecutable: executable)
-        let plan = reconciler.plan(config: config, desired: desired)
+        let plan = reconciler.plan(config: config, desired: desired,
+                                   agentPlist: LaunchAgentBuilder.agentPlist(executable: executable, paths: paths))
 
         let width = max(12, (plan.changes.map(\.name.count).max() ?? 0) + 2)
         if !plan.hasChanges {
@@ -128,13 +129,28 @@ struct Status: AsyncParsableCommand {
             }
         }
 
-        let problems = statuses.filter { $0.process.isProblem || $0.health?.isHealthy == false }
+        let facts = SystemProbe(paths: paths).gather()
+        let system = SystemSummary(facts: facts, config: config)
+        print("")
+        print(Terminal.bold("SYSTEM"))
+        for row in system.rows {
+            let value: String
+            switch row.level {
+            case .ok: value = Terminal.green(row.value)
+            case .info: value = Terminal.dim(row.value)
+            case .warn: value = Terminal.amber(row.value)
+            }
+            print(Terminal.pad(row.name, nameWidth + 16) + value)
+        }
+
+        let problems = statuses.filter { $0.process.isProblem || $0.health?.isHealthy == false }.map(\.name) + system.problems
         print("")
         if problems.isEmpty {
-            print(Terminal.green("●") + " All \(statuses.count) services healthy.")
+            let what = statuses.count == 1 ? "The service is" : "All \(statuses.count) services are"
+            print(Terminal.green("●") + " \(what) healthy.")
         } else {
-            let healthy = statuses.count - problems.count
-            print(Terminal.amber("●") + " \(healthy) of \(statuses.count) healthy. Needs attention: \(problems.map(\.name).joined(separator: ", ")).")
+            let healthy = statuses.count - statuses.filter { problems.contains($0.name) }.count
+            print(Terminal.amber("●") + " \(healthy) of \(statuses.count) services healthy. Needs attention: \(problems.joined(separator: ", ")).")
         }
     }
 }
@@ -358,5 +374,80 @@ struct Run: ParsableCommand {
         )
         let runner = try ServiceRunner(options: options)
         Foundation.exit(runner.run())
+    }
+}
+
+// MARK: - doctor
+
+struct Doctor: ParsableCommand {
+    static let configuration = CommandConfiguration(abstract: "Check whether this Mac will keep serving without you: updates, login, power, lid, Tailscale, tender-agent.")
+    @OptionGroup var options: ConfigOption
+
+    func run() throws {
+        let (paths, config) = try options.load()
+        let facts = SystemProbe(paths: paths).gather()
+        let checks = Readiness.evaluate(facts, config: config)
+        for check in checks {
+            let icon: String
+            switch check.level {
+            case .ok: icon = Terminal.green("✓")
+            case .info: icon = Terminal.dim("●")
+            case .warn: icon = Terminal.amber("!")
+            }
+            print("\(icon) \(Terminal.bold(check.title))")
+            print("  " + Terminal.dim(check.detail))
+            if let fix = check.fix { print("  " + Terminal.amber("→ ") + fix) }
+        }
+        let warnings = Readiness.warnings(checks).count
+        print("")
+        if warnings == 0 {
+            print(Terminal.green("●") + " Nothing found that would stop this Mac serving on its own.")
+        } else {
+            print(Terminal.amber("●") + " \(warnings) thing\(warnings == 1 ? "" : "s") could stop this Mac serving without you.")
+        }
+    }
+}
+
+// MARK: - agent (what launchd runs to keep the Mac awake, and later check health)
+
+struct Agent: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Run tender-agent in the foreground (its LaunchAgent calls this).",
+        shouldDisplay: false
+    )
+    @OptionGroup var options: ConfigOption
+
+    @Option(help: "Seconds between checks.")
+    var interval: Double = 5
+
+    func run() throws {
+        TenderAgent(paths: options.paths, interval: interval).runForever()
+    }
+}
+
+// MARK: - uninstall
+
+struct Uninstall: ParsableCommand {
+    static let configuration = CommandConfiguration(abstract: "Stop and remove every LaunchAgent Tender installed, tender-agent included. Config and logs are kept.")
+    @OptionGroup var options: ConfigOption
+
+    func run() throws {
+        let reconciler = Reconciler(paths: options.paths, launchControl: SystemLaunchControl())
+        let outcomes = reconciler.uninstall()
+        if outcomes.isEmpty {
+            print("Nothing to remove: no Tender LaunchAgents are installed.")
+            return
+        }
+        var failed = false
+        for outcome in outcomes {
+            switch outcome.result {
+            case .done(let text), .skipped(let text): print("\(Terminal.green("✓")) \(outcome.name): \(text)")
+            case .failed(let text):
+                failed = true
+                print("\(Terminal.red("✗")) \(outcome.name): \(text)")
+            }
+        }
+        print(Terminal.dim("Config (\(options.paths.configFile.path)) and logs (\(options.paths.logsDir.path)) were left in place."))
+        if failed { throw ExitCode.failure }
     }
 }
