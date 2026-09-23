@@ -22,14 +22,18 @@ uninstall:
 	rm -rf "$(APPDIR)/Shire.app"
 
 # The menu bar app: the ShireApp executable wrapped in a bundle and signed ad hoc (fine for your own Mac).
-app:
+app: .build/AppIcon.icns
 	swift build -c release --product ShireApp
 	rm -rf $(BUNDLE)
 	mkdir -p $(BUNDLE)/Contents/MacOS $(BUNDLE)/Contents/Resources
 	cp .build/release/ShireApp $(BUNDLE)/Contents/MacOS/Shire
 	cp App/Info.plist $(BUNDLE)/Contents/Info.plist
+	cp .build/AppIcon.icns $(BUNDLE)/Contents/Resources/AppIcon.icns
 	codesign --force --sign - --timestamp=none $(BUNDLE)
 	@echo "Built $(BUNDLE)"
+
+.build/AppIcon.icns: assets/branding/shire-logo-transparent.png App/build-icon.sh
+	sh App/build-icon.sh "$<" "$@"
 
 install-app: app
 	mkdir -p "$(APPDIR)"

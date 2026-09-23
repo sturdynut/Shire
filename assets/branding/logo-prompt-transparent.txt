@@ -1,0 +1,7 @@
+Edited with the built-in image_gen tool.
+
+Use case: background-extraction
+Asset type: Shire app logo, transparent PNG.
+Input image 1: EDIT TARGET, the approved Shire logo.
+Primary request: Remove the entire ivory rounded-square tile/background and its shadow. Isolate only the green hill shelter with its dark forest-green arched interior and the two silver server drawers with glowing green status lights, on a genuinely transparent alpha background.
+Preserve the foreground logo exactly: identical silhouette, proportions, placement, green colors, dimensional shading, aluminum texture, two server drawers, slots, and green lights. Keep the dark green doorway interior behind the servers because it is part of the logo. Remove ALL ivory area around and beneath the hill, including the floor and cast shadow outside the foreground silhouette. No white or cream fringe. Do not add any new tile, background, checkerboard pattern, outline, or surrounding shadow. Keep the square canvas and original mark scale/position. Change only background transparency, no redesign.

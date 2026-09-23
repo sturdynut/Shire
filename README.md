@@ -1,6 +1,12 @@
+<div align="center">
+
+<img src="assets/branding/shire-logo-transparent.png" alt="Shire logo: a green hill sheltering two servers" width="160" height="160">
+
 # Shire
 
 **Turn a Mac into a dependable little personal server.**
+
+</div>
 
 You describe what should be running in one YAML file. Shire keeps the Mac that way: it starts your services at
 login, restarts them when they crash, checks they're actually healthy, keeps the Mac awake, tells you when something
