@@ -10,7 +10,11 @@ See [PLAN.md](PLAN.md) for the product plan.
 - **Phase 2 (server mode):** tender-agent keeps the Mac awake while on power, `tender doctor` checks whether the Mac
   will keep serving without you, and `tender status` shows tender-agent, keep-awake, Tailscale and readiness.
 
-Health checks running continuously, alerts, the phone page and the menu bar app come in later phases.
+- **Phase 3 (health and alerts):** tender-agent checks each service on its own interval, tracks how long it has
+  been unhealthy, and sends one macOS notification per incident (crash loop, unhealthy past `alerts.unhealthyFor`,
+  a new readiness warning, "this Mac restarted") plus one when it recovers. `tender alerts` lists them.
+
+The phone page and the menu bar app come in later phases.
 
 ## Install
 
@@ -37,6 +41,7 @@ tender logs <service> -f
 tender restart <service>  # runs the build step first; --no-build to skip
 tender stop|start <service>
 tender doctor             # updates, login, power, lid, disk, Tailscale, tender-agent
+tender alerts             # recent alerts and open incidents; --test sends a test notification
 tender uninstall          # remove every Tender LaunchAgent (config and logs stay)
 ```
 
@@ -54,3 +59,6 @@ tender uninstall          # remove every Tender LaunchAgent (config and logs sta
 - `apply` also installs tender-agent (`com.tender.agent`). It re-reads config.yaml when it changes and holds a
   `PreventUserIdleSystemSleep` assertion while `serverMode.keepAwake` is on and the Mac is on power; on battery it
   lets go so the Mac can sleep. State is written to `~/Library/Application Support/Tender/agent.json`.
+- Alerts are logged to `~/Library/Application Support/Tender/alerts.jsonl`; open incidents live in `incidents.json`,
+  so restarting the agent never repeats an alert. Until the menu bar app exists, notifications go through
+  `osascript` and appear as coming from Script Editor; set `alerts: { macos: false }` to only log them.

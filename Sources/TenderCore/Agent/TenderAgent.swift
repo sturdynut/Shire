@@ -20,14 +20,20 @@ public struct AgentState: Codable, Equatable, Sendable {
     public var configPath: String
     public var configError: String?
     public var keepAwake: KeepAwake
+    /// Health as the agent has tracked it; nil in files written before health checks existed.
+    public var services: [String: ServiceHealth]?
+    public var lastAlert: AlertMessage?
 
-    public init(pid: Int32, startedAt: Date, updatedAt: Date, configPath: String, configError: String?, keepAwake: KeepAwake) {
+    public init(pid: Int32, startedAt: Date, updatedAt: Date, configPath: String, configError: String?, keepAwake: KeepAwake,
+                services: [String: ServiceHealth]? = nil, lastAlert: AlertMessage? = nil) {
         self.pid = pid
         self.startedAt = startedAt
         self.updatedAt = updatedAt
         self.configPath = configPath
         self.configError = configError
         self.keepAwake = keepAwake
+        self.services = services
+        self.lastAlert = lastAlert
     }
 
     /// The agent ticks every few seconds; anything older than this means it stopped.
@@ -61,43 +67,127 @@ public struct AgentState: Codable, Equatable, Sendable {
     }
 }
 
-/// tender-agent: the always-running part of Tender. Phase 2 owns keep-awake; health checks and alerts join it in Phase 3.
-/// It re-reads config.yaml when the file changes, so editing `keepAwake` takes effect within one tick.
+/// tender-agent: the always-running part of Tender. It keeps the Mac awake, checks each service's health on its own
+/// interval, turns problems into incidents, and sends one alert per incident plus one when it recovers.
+/// It re-reads config.yaml when the file changes, so edits take effect within one tick.
 public final class TenderAgent {
     public let paths: TenderPaths
     public let interval: TimeInterval
     private let power: PowerAsserting
     private let powerSource: () -> PowerInfo
+    private let monitor: HealthMonitor
+    private let notifier: Notifying
+    private let facts: () -> SystemFacts
+    private let readinessInterval: TimeInterval
     private let startedAt: Date
 
     private var config: TenderConfig?
     private var configError: String?
     private var configModified: Date?
+    private var incidents: IncidentState
+    private var lastReadiness: Date?
+    private var lastAlert: AlertMessage?
+    /// The heartbeat left by the previous run, used for the "services were down" report.
+    private let previousHeartbeat: Date?
+
+    /// Readiness checks that aren't worth an alert: the agent can't usefully report on itself; being on battery
+    /// already alerts, so "keep-awake released" would repeat it; and "the lid would sleep it" describes what *could*
+    /// happen, which would buzz every time a laptop's display is unplugged.
+    static let silentReadinessChecks: Set<String> = ["agent", "keep-awake", "lid"]
 
     public init(paths: TenderPaths, interval: TimeInterval = 5, power: PowerAsserting = PowerAssertion(),
-                powerSource: @escaping () -> PowerInfo = PowerInfo.current, now: Date = Date()) {
+                powerSource: @escaping () -> PowerInfo = PowerInfo.current,
+                monitor: HealthMonitor = HealthMonitor(),
+                notifier: Notifying = OsascriptNotifier(),
+                facts: (() -> SystemFacts)? = nil,
+                readinessInterval: TimeInterval = 300,
+                now: Date = Date()) {
         self.paths = paths
         self.interval = interval
         self.power = power
         self.powerSource = powerSource
+        self.monitor = monitor
+        self.notifier = notifier
+        self.facts = facts ?? { SystemProbe(paths: paths).gather() }
+        self.readinessInterval = readinessInterval
         self.startedAt = now
+        let previous = AgentState.read(from: paths.agentStateFile)
+        self.previousHeartbeat = previous?.updatedAt
+        self.lastAlert = previous?.lastAlert
+        self.incidents = IncidentState.read(from: paths.incidentsFile)
     }
 
-    /// One pass: reload config if it changed, decide keep-awake, record state.
+    /// Reports a gap since the previous run (a restart, or the agent being stopped). Call once at startup.
+    @discardableResult
+    public func reportDowntime(bootTime: Date? = SystemProbe.bootTime()) -> AlertMessage? {
+        guard let alert = IncidentEngine.downtime(previousHeartbeat: previousHeartbeat, bootTime: bootTime, agentStart: startedAt) else { return nil }
+        reloadConfigIfNeeded()
+        send(alert)
+        return alert
+    }
+
+    /// One pass: reload config if it changed, keep-awake, health checks, incidents and alerts, then record state.
     @discardableResult
     public func tick(now: Date = Date()) -> AgentState {
         reloadConfigIfNeeded()
         let keepAwake = updateKeepAwake()
+        var health: [String: ServiceHealth] = [:]
+        if let config {
+            health = monitor.runDueChecks(config: config, now: now)
+            evaluateIncidents(config: config, health: health, now: now)
+        }
         let state = AgentState(
             pid: ProcessInfo.processInfo.processIdentifier,
             startedAt: startedAt,
             updatedAt: now,
             configPath: paths.configFile.path,
             configError: configError,
-            keepAwake: keepAwake
+            keepAwake: keepAwake,
+            services: health,
+            lastAlert: lastAlert
         )
         try? state.write(to: paths.agentStateFile)
         return state
+    }
+
+    private func evaluateIncidents(config: TenderConfig, health: [String: ServiceHealth], now: Date) {
+        let inspector = StatusInspector(paths: paths, launchControl: NoLaunchControl(), crashLoop: config.alerts.crashLoop)
+        let dependencyHealth = health.mapValues { $0.healthy ? HealthResult.healthy(detail: $0.detail) : .unhealthy(detail: $0.detail) }
+        var observations: [String: ServiceObservation] = [:]
+        for (name, service) in config.services {
+            var observation = ServiceObservation(health: health[name])
+            if !service.isExternal {
+                let events = EventLog(url: paths.events(for: name)).read()
+                if let loop = StatusInspector.crashLoop(in: events, rule: config.alerts.crashLoop, now: now) {
+                    observation.crashLoop = loop
+                    observation.cause = inspector.likelyCause(name: name, service: service, state: loop, dependencyHealth: dependencyHealth)
+                }
+            }
+            observations[name] = observation
+        }
+
+        var warnings: [ReadinessCheck]?
+        if lastReadiness == nil || now.timeIntervalSince(lastReadiness!) >= readinessInterval {
+            lastReadiness = now
+            warnings = Readiness.warnings(Readiness.evaluate(facts(), config: config, now: now))
+                .filter { !Self.silentReadinessChecks.contains($0.id) }
+        }
+
+        let (next, alerts) = IncidentEngine.evaluate(previous: incidents, services: observations, readinessWarnings: warnings, config: config, now: now)
+        if next != incidents {
+            incidents = next
+            try? incidents.write(to: paths.incidentsFile)
+        }
+        alerts.forEach(send)
+    }
+
+    private func send(_ alert: AlertMessage) {
+        AlertLog(url: paths.alertsFile).append(alert)
+        lastAlert = alert
+        log("alert: \(alert.title) — \(alert.body)")
+        if config?.alerts.macos ?? true {
+            notifier.deliver(alert)
+        }
     }
 
     public func runForever() -> Never {
@@ -111,6 +201,7 @@ public final class TenderAgent {
             sources.append(source)
         }
         log("tender-agent started (config: \(paths.configFile.path))")
+        reportDowntime()
         withExtendedLifetime(sources) {
             while true {
                 tick()
@@ -173,4 +264,12 @@ public final class TenderAgent {
     private func log(_ message: String) {
         FileHandle.standardError.write(Data("\(Self.timestamp.string(from: Date())) \(message)\n".utf8))
     }
+}
+
+/// Crash-loop detection and likely causes only read files; this stands in where no launchd queries are wanted.
+struct NoLaunchControl: LaunchControl {
+    func info(_ label: String) -> LaunchJobInfo? { nil }
+    func bootstrap(plist: URL, label: String) throws {}
+    func bootout(_ label: String) throws {}
+    func kickstart(_ label: String, kill: Bool) throws {}
 }

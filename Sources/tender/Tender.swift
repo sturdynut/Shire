@@ -8,7 +8,7 @@ struct Tender: AsyncParsableCommand {
         commandName: "tender",
         abstract: "Keep a Mac in the state config.yaml describes: services running, healthy, and explained when they aren't.",
         version: "0.1.0",
-        subcommands: [Apply.self, Status.self, Doctor.self, Start.self, Stop.self, Restart.self, Logs.self, Validate.self, Run.self, Agent.self, Uninstall.self]
+        subcommands: [Apply.self, Status.self, Doctor.self, Start.self, Stop.self, Restart.self, Logs.self, Validate.self, Run.self, Agent.self, Uninstall.self, Alerts.self]
     )
 }
 
@@ -85,14 +85,25 @@ struct Status: AsyncParsableCommand {
         let inspector = StatusInspector(paths: paths, launchControl: SystemLaunchControl(), crashLoop: config.alerts.crashLoop)
         let names = DependencyOrder.sorted(config)
 
+        // Prefer the agent's tracked health (it knows how long a service has been unhealthy); check directly otherwise.
+        let agentState = AgentState.read(from: paths.agentStateFile).flatMap { $0.isFresh() ? $0 : nil }
+        let tracked = agentState?.services ?? [:]
         var health: [String: HealthResult] = [:]
-        await withTaskGroup(of: (String, HealthResult?).self) { group in
-            for name in names {
-                let check = config.services[name]!.health
-                group.addTask { (name, check == nil ? nil : await HealthProbe.check(check!)) }
+        var healthNote: [String: String] = [:]
+        let now = Date()
+        for (name, state) in tracked {
+            health[name] = state.healthy ? .healthy(detail: state.detail) : .unhealthy(detail: state.detail)
+            healthNote[name] = state.healthy ? "checked \(Readiness.describe(now.timeIntervalSince(state.lastChecked))) ago"
+                                             : "for \(Readiness.describe(now.timeIntervalSince(state.since)))"
+        }
+        let untracked = names.filter { health[$0] == nil && config.services[$0]!.health != nil }
+        await withTaskGroup(of: (String, HealthResult).self) { group in
+            for name in untracked {
+                let check = config.services[name]!.health!
+                group.addTask { (name, await HealthProbe.check(check)) }
             }
             for await (name, result) in group {
-                if let result { health[name] = result }
+                health[name] = result
             }
         }
 
@@ -117,7 +128,9 @@ struct Status: AsyncParsableCommand {
             let healthText: String
             switch status.health {
             case .healthy(let detail)?: healthText = Terminal.green("healthy") + Terminal.dim(" · \(detail)")
-            case .unhealthy(let detail)?: healthText = Terminal.red("unhealthy") + Terminal.dim(" · \(detail)")
+            case .unhealthy(let detail)?:
+                let note = healthNote[status.name].map { " · \($0)" } ?? ""
+                healthText = Terminal.red("unhealthy") + Terminal.dim(" · \(detail)\(note)")
             case nil: healthText = Terminal.dim("no check")
             }
             print(Terminal.pad(status.name, nameWidth) + Terminal.pad(process, 16) + healthText)
@@ -449,5 +462,52 @@ struct Uninstall: ParsableCommand {
         }
         print(Terminal.dim("Config (\(options.paths.configFile.path)) and logs (\(options.paths.logsDir.path)) were left in place."))
         if failed { throw ExitCode.failure }
+    }
+}
+
+// MARK: - alerts
+
+struct Alerts: ParsableCommand {
+    static let configuration = CommandConfiguration(abstract: "Show recent alerts, or send a test notification.")
+    @OptionGroup var options: ConfigOption
+
+    @Option(name: [.customShort("n"), .long], help: "How many recent alerts to show.")
+    var count = 20
+
+    @Flag(help: "Send a test notification to check macOS shows Tender's alerts.")
+    var test = false
+
+    func run() throws {
+        let paths = options.paths
+        if test {
+            let alert = AlertMessage(time: Date(), kind: .info, title: "Test alert",
+                                     body: "If you can read this, Tender’s alerts reach this Mac.")
+            OsascriptNotifier().deliver(alert)
+            AlertLog(url: paths.alertsFile).append(alert)
+            print("\(Terminal.green("✓")) Sent. If nothing appeared, allow notifications for Script Editor in System Settings → Notifications.")
+            return
+        }
+        let alerts = AlertLog(url: paths.alertsFile).recent(count)
+        guard !alerts.isEmpty else {
+            print("No alerts yet.")
+            return
+        }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE d MMM HH:mm"
+        for alert in alerts {
+            let mark: String
+            switch alert.kind {
+            case .problem: mark = Terminal.red("●")
+            case .recovery: mark = Terminal.green("●")
+            case .info: mark = Terminal.dim("●")
+            }
+            print("\(mark) \(Terminal.dim(formatter.string(from: alert.time)))  \(Terminal.bold(alert.title))")
+            print("  " + alert.body)
+        }
+        let open = IncidentState.read(from: paths.incidentsFile).open.values.sorted { $0.openedAt < $1.openedAt }
+        if !open.isEmpty {
+            print("")
+            print(Terminal.bold("Open: ") + open.map(\.title).joined(separator: "; "))
+        }
     }
 }

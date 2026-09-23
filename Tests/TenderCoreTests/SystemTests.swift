@@ -189,7 +189,9 @@ final class FakePower: PowerAsserting {
 @Suite("tender-agent", .serialized)
 struct AgentTests {
     func makeAgent(_ home: TempHome, power: FakePower, source: @escaping () -> PowerInfo) -> TenderAgent {
-        TenderAgent(paths: home.paths, interval: 1, power: power, powerSource: source)
+        TenderAgent(paths: home.paths, interval: 1, power: power, powerSource: source,
+                    monitor: HealthMonitor(probe: { _ in .healthy(detail: "ok") }),
+                    notifier: FakeNotifier(), facts: { SystemFacts() })
     }
 
     @Test func holdsKeepAwakeOnPowerAndWritesState() throws {

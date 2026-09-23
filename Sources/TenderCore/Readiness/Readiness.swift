@@ -91,7 +91,7 @@ public enum Readiness {
 
     static func agent(_ facts: SystemFacts, now: Date) -> ReadinessCheck {
         guard facts.agentLoaded else {
-            return ReadinessCheck("agent", .warn, "tender-agent isn’t installed", "Keep-awake (and later, health checks and alerts) need it.",
+            return ReadinessCheck("agent", .warn, "tender-agent isn’t installed", "Keep-awake, health checks and alerts need it.",
                                   fix: "Run `tender apply`.")
         }
         guard let state = facts.agentState, state.isFresh(now: now) else {
@@ -164,7 +164,9 @@ public enum Readiness {
         }
     }
 
-    static func describe(_ interval: TimeInterval) -> String {
+    /// A short human duration: `45s`, `12m`, `3h 5m`, `2d 4h`.
+    public static func describe(_ interval: TimeInterval) -> String {
+        if interval < 60 { return "\(max(0, Int(interval)))s" }
         let minutes = Int(interval / 60)
         let days = minutes / 1440, hours = (minutes % 1440) / 60, mins = minutes % 60
         if days > 0 { return "\(days)d \(hours)h" }

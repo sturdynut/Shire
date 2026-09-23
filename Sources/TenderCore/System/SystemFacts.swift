@@ -117,7 +117,7 @@ public struct SystemProbe: Sendable {
         return displays.prefix(Int(count)).filter { CGDisplayIsBuiltin($0) == 0 }.count
     }
 
-    static func bootTime() -> Date? {
+    public static func bootTime() -> Date? {
         var time = timeval()
         var size = MemoryLayout<timeval>.stride
         var mib: [Int32] = [CTL_KERN, KERN_BOOTTIME]

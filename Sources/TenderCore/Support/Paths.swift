@@ -27,6 +27,8 @@ public struct TenderPaths: Sendable, Equatable {
     public var eventsDir: URL { stateDir.appending(path: "events") }
     public var agentStateFile: URL { stateDir.appending(path: "agent.json") }
     public var agentLog: URL { logsDir.appending(path: "tender-agent.log") }
+    public var incidentsFile: URL { stateDir.appending(path: "incidents.json") }
+    public var alertsFile: URL { stateDir.appending(path: "alerts.jsonl") }
 
     public func stdoutLog(for service: String) -> URL { logsDir.appending(path: "\(service).stdout.log") }
     public func stderrLog(for service: String) -> URL { logsDir.appending(path: "\(service).stderr.log") }

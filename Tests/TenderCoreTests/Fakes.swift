@@ -153,3 +153,11 @@ func planResolution() -> ResolvedEnvironment {
         loginPath: "\(nvm22_14):/opt/homebrew/bin:/usr/bin:/bin"
     )
 }
+
+final class FakeNotifier: Notifying, @unchecked Sendable {
+    private let lock = NSLock()
+    private var delivered: [AlertMessage] = []
+
+    func deliver(_ alert: AlertMessage) { lock.withLock { delivered.append(alert) } }
+    var titles: [String] { lock.withLock { delivered.map(\.title) } }
+}

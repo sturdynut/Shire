@@ -225,7 +225,9 @@ Rules (all on by default):
 - services were down (reported after login, with duration)
 - back to healthy (one message per recovery)
 
-One alert per incident, then one on recovery.
+One alert per incident, then one on recovery. Open incidents are saved, so restarting the agent never repeats an alert.
+
+Built in Phase 3 with two known gaps: per-rule on/off switches (the Alerts screen in the designs) aren't in the config yet, all rules are on and `alerts.macos` turns notifications off entirely; and notifications go through `osascript` (shown as Script Editor) until the menu bar app gives Tender a real app identity.
 
 ## Phone status page
 
@@ -326,7 +328,7 @@ Light and dark follow macOS.
 
 tender-agent, keep-awake assertion, Tailscale status, `tender doctor`, combined overall status.
 
-## Phase 3 — Health checks and alerts
+## Phase 3 — Health checks and alerts ✅
 
 HTTP and TCP health checks in tender-agent, unhealthy/degraded states, macOS notifications with the rules above, and the "services were down" report after login.
 
