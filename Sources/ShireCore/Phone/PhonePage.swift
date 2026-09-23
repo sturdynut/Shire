@@ -1,7 +1,4 @@
-import CoreGraphics
 import Foundation
-import ImageIO
-import UniformTypeIdentifiers
 
 /// The phone page: one self-contained HTML file (no external requests), a manifest so it can live on the Home Screen,
 /// and a service worker that shows pushed alerts.
@@ -14,10 +11,10 @@ enum PhonePage {
       "start_url": "/",
       "scope": "/",
       "display": "standalone",
-      "background_color": "#131312",
+      "background_color": "#F6F1E6",
       "theme_color": "#131312",
       "icons": [
-        { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+        { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
         { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
       ]
     }
@@ -48,45 +45,6 @@ enum PhonePage {
     });
     """
 
-    static let iconSVG = """
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180"><rect width="180" height="180" rx="40" fill="#1E1D1B"/>\
-    <rect x="42" y="50" width="96" height="32" rx="8" fill="none" stroke="#EFEDE7" stroke-width="7"/>\
-    <rect x="42" y="98" width="96" height="32" rx="8" fill="none" stroke="#EFEDE7" stroke-width="7"/>\
-    <circle cx="60" cy="66" r="5" fill="#EFEDE7"/><circle cx="60" cy="114" r="5" fill="#EFEDE7"/>\
-    <circle cx="136" cy="136" r="16" fill="#5BCB86"/></svg>
-    """
-
-    /// The Home Screen icon (iOS wants a PNG), drawn once with Core Graphics.
-    static let iconPNG: Data = {
-        let size = 180
-        guard let context = CGContext(data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0,
-                                      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-        else { return Data() }
-        func color(_ hex: UInt32) -> CGColor {
-            CGColor(red: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255, blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
-        }
-        // Core Graphics is y-up; the shapes are symmetric enough that it doesn't matter.
-        context.setFillColor(color(0x1E1D1B))
-        context.addPath(CGPath(roundedRect: CGRect(x: 0, y: 0, width: 180, height: 180), cornerWidth: 40, cornerHeight: 40, transform: nil))
-        context.fillPath()
-        context.setStrokeColor(color(0xEFEDE7))
-        context.setLineWidth(7)
-        for y in [98.0, 50.0] {
-            context.addPath(CGPath(roundedRect: CGRect(x: 42, y: y, width: 96, height: 32), cornerWidth: 8, cornerHeight: 8, transform: nil))
-            context.strokePath()
-            context.setFillColor(color(0xEFEDE7))
-            context.fillEllipse(in: CGRect(x: 55, y: y + 11, width: 10, height: 10))
-        }
-        context.setFillColor(color(0x5BCB86))
-        context.fillEllipse(in: CGRect(x: 120, y: 28, width: 32, height: 32))
-        guard let image = context.makeImage() else { return Data() }
-        let data = NSMutableData()
-        guard let destination = CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil) else { return Data() }
-        CGImageDestinationAddImage(destination, image, nil)
-        CGImageDestinationFinalize(destination)
-        return data as Data
-    }()
-
     static let html = #"""
     <!doctype html>
     <html lang="en">
@@ -100,7 +58,7 @@ enum PhonePage {
     <meta name="theme-color" content="#F6F5F1" media="(prefers-color-scheme: light)">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-    <link rel="icon" href="/icon.svg">
+    <link rel="icon" type="image/png" href="/icon-512.png">
     <title>Shire</title>
     <style>
     :root {

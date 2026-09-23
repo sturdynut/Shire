@@ -1,0 +1,11 @@
+Generated with the built-in image_gen tool.
+
+Use case: logo-brand
+Asset type: finished macOS app logo for Shire, a local-first menu bar utility that makes a Mac a dependable personal server, keeps services running and monitors their health.
+Input images: Image 1 is the Ullage app logo, a STYLE REFERENCE ONLY. Create a different Shire symbol using the same visual family: same deep charcoal rounded-square tile, same crisp thick geometry, restrained metallic material depth, balanced spacing and premium native macOS finish.
+Primary request: One bold geometric green shelter arch enclosing two simple horizontal server bars. The arch subtly evokes a rounded hill and safe home, reflecting the name Shire. The two bars communicate the services it keeps alive. Simplify into a unified memorable emblem with strong negative space; no literal landscape or illustration. Each bar has just one tiny dark circular status inset on its right. The arch and bars use the same green material. The silhouette must be clear at small app-icon sizes.
+Style/medium: Precision-crafted minimal macOS icon, almost flat with restrained satin-metal depth and exceptionally clean contours, exactly the level of abstraction and polish seen in the Ullage reference. Straight-on, no perspective.
+Scene/backdrop: Deep charcoal #14181c rounded-square tile, very subtle surface shading, same tile proportions as reference. Genuine transparent background outside the tile, clean smooth edges.
+Color palette: Charcoal tile; rich emerald green main mark with softly lit sage-green highlights, grounded in Shire's healthy service status. No brass, no silver, no ivory.
+Composition/framing: One centered finished icon on a square canvas, tile occupies about 88 percent of canvas. Emblem occupies about 60 percent of canvas with generous breathing room and balanced geometry.
+Constraints: No text, no U, no wordmark, no tree, no grass, no house windows, no cables, no computer screen, no neon glow, no tiny decorative details, no sparkle, no mockup, no presentation board, no watermark. Single final icon, not multiple options.

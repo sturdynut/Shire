@@ -145,6 +145,7 @@ struct PhoneServerTests {
         #expect(await server.handle(request("GET", "/sw.js")).headers["Service-Worker-Allowed"] == "/")
         let icon = await server.handle(request("GET", "/apple-touch-icon.png"))
         #expect(icon.body.starts(with: [0x89, 0x50, 0x4E, 0x47])) // PNG signature
+        #expect(await server.handle(request("GET", "/icon-512.png")).body.starts(with: [0x89, 0x50, 0x4E, 0x47]))
         #expect(await server.handle(request("GET", "/nope")).status == 404)
     }
 

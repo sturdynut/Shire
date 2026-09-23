@@ -2,6 +2,8 @@
 
 <img src="assets/branding/shire-logo-transparent.png" alt="Shire logo: a green hill sheltering two servers" width="160" height="160">
 
+<p align="center"><img src="assets/branding/shire-logo-transparent.png" width="160" alt="Shire logo: a green hill shelter around two server drawers"></p>
+
 # Shire
 
 **Turn a Mac into a dependable little personal server.**
@@ -227,7 +229,9 @@ Sources/
 ├── shire/        # the command line (swift-argument-parser)
 └── ShireApp/     # the SwiftUI menu bar app
 Tests/ShireCoreTests/
-App/Info.plist     # Shire.app bundle metadata
+App/               # Shire.app Info.plist and AppIcon.icns
+assets/branding/   # the logo (shire-logo-transparent.png) and earlier concepts
+scripts/           # make-phone-icons.swift (`make icons` regenerates every icon from the logo)
 examples/config.yaml
 ```
 

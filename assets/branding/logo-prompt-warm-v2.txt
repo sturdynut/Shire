@@ -1,0 +1,10 @@
+Generated with the built-in image_gen tool.
+
+Use case: logo-brand
+Asset type: another polished macOS app icon concept for Shire, a friendly local-first personal-server utility.
+Input images: Image 1 is the user's preferred FIRST Shire concept; use it as a close visual and conceptual reference for a fresh sibling variation.
+Primary request: Keep the appealing warm ivory rounded-square tile, sculptural green hill shelter, dark arched doorway and two silver server drawers with softly glowing green health lights. Make a new version in the same warm, tactile, slightly playful 3D macOS style. Refine the hill into a slightly lower, broader, gently asymmetric rolling mound with a rounder welcoming arch; make the inset servers beautifully crisp brushed aluminum with soft rounded corners. Preserve the clear idea of a safe little home for always-running services.
+Style: expertly crafted miniature enamel and satin-metal icon, soft dimensional bevels, smooth surfaces, subtle contact shadows, restrained warm studio illumination, strong silhouette. Attractive and approachable, with a little character. No surface grain or weathering.
+Composition: one centered complete icon, straight-on view, generous breathing room around the mark, warm ivory squircle occupies approximately 88 percent of the square canvas. Dark doorway contains exactly two clearly separated compact server drawers, each with one horizontal dark slot and one small lime-green indicator. Keep detail bold enough to read as an app icon.
+Color: warm ivory, natural rich leaf greens with lighter sunlit green on the upper hill, dark forest-green recess, silver drawers, small green status lights.
+Constraints: a fresh variation close to the supplied first concept. No text, no letters, no trees, no grass, no flowers, no chimney, no extra objects, no borders, no presentation board, no watermark. Genuine clean transparency outside the tile, no stray pixels. Deliver one finished high-resolution square icon.

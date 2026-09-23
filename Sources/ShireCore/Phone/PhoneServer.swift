@@ -125,9 +125,11 @@ public final class PhoneServer: @unchecked Sendable {
             response.headers["Service-Worker-Allowed"] = "/"
             return response
         }
-        if get, parts == ["icon.svg"] { return .text(PhonePage.iconSVG, type: "image/svg+xml") }
         if get, parts == ["apple-touch-icon.png"] {
-            return HTTPServer.Response(headers: ["Content-Type": "image/png", "Cache-Control": "max-age=86400"], body: PhonePage.iconPNG)
+            return HTTPServer.Response(headers: ["Content-Type": "image/png", "Cache-Control": "max-age=86400"], body: PhonePage.touchIconPNG)
+        }
+        if get, parts == ["icon-512.png"] {
+            return HTTPServer.Response(headers: ["Content-Type": "image/png", "Cache-Control": "max-age=86400"], body: PhonePage.largeIconPNG)
         }
         if get, parts == ["api", "status"] { return .json(await status(viewer: viewer(request))) }
         if parts.count == 4, parts[0] == "api", parts[1] == "services" {
