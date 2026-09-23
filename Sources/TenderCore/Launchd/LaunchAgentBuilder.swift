@@ -73,6 +73,9 @@ public enum LaunchAgentBuilder {
         for wait in inputs.dependencyWaits {
             runArguments += ["--wait-for", wait.description]
         }
+        if inputs.service.adoptRunning, let endpoint = inputs.service.health?.endpoint {
+            runArguments += ["--adopt", endpoint.description]
+        }
         runArguments += ["--", inputs.resolvedCommand] + inputs.service.args
 
         var environment = inputs.service.env

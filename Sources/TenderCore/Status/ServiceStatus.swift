@@ -130,6 +130,9 @@ public struct StatusInspector: Sendable {
             }
             return "command not found (exit 127)."
         }
+        if exitCode == ServiceRunner.exitHandedOff {
+            return "\(name) is already open without the options Tender starts it with (like a debug port). Quit it once; Tender will start it properly."
+        }
         if exitCode == ServiceRunner.exitDependencyTimeout {
             return "gave up waiting for a dependency; launchd will retry."
         }

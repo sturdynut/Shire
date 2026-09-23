@@ -363,6 +363,9 @@ struct Run: ParsableCommand {
     @Option(help: "host:port to wait for before starting (repeatable).")
     var waitFor: [String] = []
 
+    @Option(help: "host:port that, if already answering, means a copy is running: watch it instead of starting another.")
+    var adopt: String?
+
     @Argument(parsing: .postTerminator, help: "-- command and arguments")
     var command: [String] = []
 
@@ -382,6 +385,10 @@ struct Run: ParsableCommand {
             eventsFile: events.map { URL(fileURLWithPath: $0) },
             envFile: envFile.map { URL(fileURLWithPath: $0) },
             waitFor: waits,
+            adopt: try adopt.map { text in
+                guard let endpoint = HostPort(parsing: text) else { throw ValidationError("--adopt expects host:port, got \(text)") }
+                return endpoint
+            },
             command: executable,
             arguments: Array(command.dropFirst())
         )

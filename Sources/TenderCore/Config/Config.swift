@@ -161,6 +161,9 @@ public struct ServiceConfig: Equatable, Sendable, Decodable {
     public var serve: Int?
     /// Label of an existing launchd job that Tender watches but doesn't manage.
     public var external: String?
+    /// When something already answers the health check at start (an app you opened yourself), watch it instead of
+    /// starting a second copy. Meant for single-instance GUI apps like TradingView.
+    public var adoptRunning: Bool
 
     public var isExternal: Bool { external != nil }
 
@@ -175,7 +178,8 @@ public struct ServiceConfig: Equatable, Sendable, Decodable {
         dependsOn: [String] = [],
         health: HealthCheckConfig? = nil,
         serve: Int? = nil,
-        external: String? = nil
+        external: String? = nil,
+        adoptRunning: Bool = false
     ) {
         self.command = command
         self.args = args
@@ -188,6 +192,7 @@ public struct ServiceConfig: Equatable, Sendable, Decodable {
         self.health = health
         self.serve = serve
         self.external = external
+        self.adoptRunning = adoptRunning
     }
 
     public init(from decoder: Decoder) throws {
@@ -203,10 +208,11 @@ public struct ServiceConfig: Equatable, Sendable, Decodable {
         health = try c.decodeIfPresent(HealthCheckConfig.self, forKey: .health)
         serve = try c.decodeIfPresent(Int.self, forKey: .serve)
         external = try c.decodeIfPresent(String.self, forKey: .external)
+        adoptRunning = try c.decodeIfPresent(Bool.self, forKey: .adoptRunning) ?? false
     }
 
     enum CodingKeys: String, CodingKey, CaseIterable {
-        case command, args, cwd, env, envFile, build, restart, dependsOn, health, serve, external
+        case command, args, cwd, env, envFile, build, restart, dependsOn, health, serve, external, adoptRunning
     }
 }
 

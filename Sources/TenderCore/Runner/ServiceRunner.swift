@@ -9,11 +9,15 @@ public struct RunnerOptions: Equatable, Sendable {
     public var envFile: URL?
     public var waitFor: [HostPort]
     public var waitTimeout: TimeInterval
+    /// If this endpoint already answers at start, watch that copy instead of starting another.
+    public var adopt: HostPort?
+    public var adoptPollInterval: TimeInterval
     public var command: String
     public var arguments: [String]
 
     public init(name: String, logDir: URL, maxLogSize: Int, keepLogs: Int, eventsFile: URL?, envFile: URL?,
-                waitFor: [HostPort], waitTimeout: TimeInterval = 120, command: String, arguments: [String]) {
+                waitFor: [HostPort], waitTimeout: TimeInterval = 120, adopt: HostPort? = nil, adoptPollInterval: TimeInterval = 5,
+                command: String, arguments: [String]) {
         self.name = name
         self.logDir = logDir
         self.maxLogSize = maxLogSize
@@ -22,6 +26,8 @@ public struct RunnerOptions: Equatable, Sendable {
         self.envFile = envFile
         self.waitFor = waitFor
         self.waitTimeout = waitTimeout
+        self.adopt = adopt
+        self.adoptPollInterval = adoptPollInterval
         self.command = command
         self.arguments = arguments
     }
@@ -34,6 +40,8 @@ public final class ServiceRunner: @unchecked Sendable {
     public static let exitCommandNotFound: Int32 = 127
     public static let exitNotExecutable: Int32 = 126
     public static let exitDependencyTimeout: Int32 = 75 // EX_TEMPFAIL
+    /// An adoptable app exited at once without opening its port: it handed off to a copy that's already open.
+    public static let exitHandedOff: Int32 = 69 // EX_UNAVAILABLE
 
     private let options: RunnerOptions
     private let stdoutLog: RotatingLog
@@ -59,6 +67,11 @@ public final class ServiceRunner: @unchecked Sendable {
 
     private func runChild() -> Int32 {
         say("starting \(options.name)")
+        let signals = installSignalForwarding()
+        defer {
+            signals.forEach { $0.cancel() }
+            [SIGTERM, SIGINT, SIGHUP].forEach { signal($0, SIG_DFL) }
+        }
 
         let fm = FileManager.default
         if !fm.fileExists(atPath: options.command) {
@@ -76,9 +89,22 @@ public final class ServiceRunner: @unchecked Sendable {
 
         for endpoint in options.waitFor {
             if !waitUntilReachable(endpoint) {
+                if stopRequestedSnapshot() { return 0 }
                 say("gave up waiting for \(endpoint) after \(DurationValue(seconds: options.waitTimeout)); launchd will try again", error: true)
                 return Self.exitDependencyTimeout
             }
+        }
+
+        if let adopt = options.adopt, HealthProbe.tcpConnect(adopt, timeout: 1) {
+            say("\(options.name) is already running (\(adopt) answers); watching it instead of starting a second copy")
+            while !stopRequestedSnapshot(), HealthProbe.tcpConnect(adopt, timeout: 1) {
+                sleepUnlessStopped(options.adoptPollInterval)
+            }
+            if stopRequestedSnapshot() {
+                say("stopped watching; the copy you opened was left running")
+                return 0
+            }
+            say("the running copy went away; starting \(options.name)")
         }
 
         var environment = ProcessInfo.processInfo.environment
@@ -101,12 +127,6 @@ public final class ServiceRunner: @unchecked Sendable {
         process.standardError = err
         out.fileHandleForReading.readabilityHandler = { [stdoutLog] handle in stdoutLog.write(handle.availableData) }
         err.fileHandleForReading.readabilityHandler = { [stderrLog] handle in stderrLog.write(handle.availableData) }
-
-        let signals = installSignalForwarding()
-        defer {
-            signals.forEach { $0.cancel() }
-            [SIGTERM, SIGINT, SIGHUP].forEach { signal($0, SIG_DFL) }
-        }
 
         say("exec \(([options.command] + options.arguments).joined(separator: " "))")
         let started = Date()
@@ -138,6 +158,10 @@ public final class ServiceRunner: @unchecked Sendable {
             say("stopped by signal \(process.terminationStatus) after \(runtime)", error: !stopRequestedSnapshot())
         default:
             code = process.terminationStatus
+            if code == 0, let adopt = options.adopt, runtime.seconds < 5, !stopRequestedSnapshot(), !HealthProbe.tcpConnect(adopt, timeout: 1) {
+                say("\(options.name) exited right away without opening \(adopt). It’s probably already open without the options Tender starts it with; quit it once and Tender will start it properly.", error: true)
+                return Self.exitHandedOff
+            }
             say("exited \(code) after \(runtime)", error: code != 0)
         }
         return stopRequestedSnapshot() && code == 128 + SIGTERM ? 0 : code
@@ -145,6 +169,13 @@ public final class ServiceRunner: @unchecked Sendable {
 
     private func stopRequestedSnapshot() -> Bool {
         lock.withLock { stopRequested }
+    }
+
+    private func sleepUnlessStopped(_ seconds: TimeInterval) {
+        let deadline = Date().addingTimeInterval(seconds)
+        while Date() < deadline, !stopRequestedSnapshot() {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
     }
 
     private func waitUntilReachable(_ endpoint: HostPort) -> Bool {

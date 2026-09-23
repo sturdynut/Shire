@@ -99,6 +99,9 @@ public struct Validator: Sendable {
         } else if service.command == nil || service.command!.isEmpty {
             issues.append(.init(.error, name, "needs a “command” (or “external:” to watch a launchd job Tender doesn’t own)."))
         }
+        if service.adoptRunning, service.health?.endpoint == nil {
+            issues.append(.init(.error, name, "“adoptRunning” needs a health check with a port, so Tender can tell a copy is already running."))
+        }
         if let serve = service.serve, !(1...65535).contains(serve) {
             issues.append(.init(.error, name, "“serve” must be a port between 1 and 65535."))
         }
