@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleIdentifier</key>
-	<string>com.tender.app</string>
+	<string>com.shire.app</string>
 	<key>CFBundleName</key>
-	<string>Tender</string>
+	<string>Shire</string>
 	<key>CFBundleDisplayName</key>
-	<string>Tender</string>
+	<string>Shire</string>
 	<key>CFBundleExecutable</key>
-	<string>Tender</string>
+	<string>Shire</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

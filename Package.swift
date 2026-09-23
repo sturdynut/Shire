@@ -2,28 +2,28 @@
 import PackageDescription
 
 let package = Package(
-    name: "Tender",
+    name: "Shire",
     platforms: [.macOS(.v14)],
     products: [
-        .executable(name: "tender", targets: ["tender"]),
-        .executable(name: "TenderApp", targets: ["TenderApp"]),
-        .library(name: "TenderCore", targets: ["TenderCore"]),
+        .executable(name: "shire", targets: ["shire"]),
+        .executable(name: "ShireApp", targets: ["ShireApp"]),
+        .library(name: "ShireCore", targets: ["ShireCore"]),
     ],
     dependencies: [
         .package(url: "https://github.com/jpsim/Yams.git", from: "5.1.0"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
     ],
     targets: [
-        .target(name: "TenderCore", dependencies: ["Yams"]),
+        .target(name: "ShireCore", dependencies: ["Yams"]),
         .executableTarget(
-            name: "tender",
+            name: "shire",
             dependencies: [
-                "TenderCore",
+                "ShireCore",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
         ),
-        // The menu bar app. `make app` wraps this executable in Tender.app.
-        .executableTarget(name: "TenderApp", dependencies: ["TenderCore"]),
-        .testTarget(name: "TenderCoreTests", dependencies: ["TenderCore"]),
+        // The menu bar app. `make app` wraps this executable in Shire.app.
+        .executableTarget(name: "ShireApp", dependencies: ["ShireCore"]),
+        .testTarget(name: "ShireCoreTests", dependencies: ["ShireCore"]),
     ]
 )
