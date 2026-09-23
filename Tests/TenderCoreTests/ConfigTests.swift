@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import UpliftCore
+@testable import TenderCore
 
 @Suite("Units")
 struct UnitsTests {
@@ -133,7 +133,7 @@ struct ValidatorTests {
 
     @Test func managedServiceNeedsACommand() throws {
         let found = try issues("services:\n  a:\n    args: [x]\n")
-        #expect(found == [ValidationIssue(.error, "a", "needs a “command” (or “external:” to watch a launchd job Uplift doesn’t own).")])
+        #expect(found == [ValidationIssue(.error, "a", "needs a “command” (or “external:” to watch a launchd job Tender doesn’t own).")])
     }
 
     @Test func externalServiceCantHaveACommand() throws {

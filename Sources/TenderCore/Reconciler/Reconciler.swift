@@ -80,11 +80,11 @@ public struct ShellServiceBuilder: ServiceBuilding {
 }
 
 public struct Reconciler: Sendable {
-    public var paths: UpliftPaths
+    public var paths: TenderPaths
     public var launchControl: LaunchControl
     public var builder: ServiceBuilding
 
-    public init(paths: UpliftPaths, launchControl: LaunchControl, builder: ServiceBuilding = ShellServiceBuilder()) {
+    public init(paths: TenderPaths, launchControl: LaunchControl, builder: ServiceBuilding = ShellServiceBuilder()) {
         self.paths = paths
         self.launchControl = launchControl
         self.builder = builder
@@ -92,7 +92,7 @@ public struct Reconciler: Sendable {
 
     // MARK: Desired state
 
-    public func desiredPlists(config: UpliftConfig, resolved: ResolvedEnvironment, upliftExecutable: String) -> [String: [String: Any]] {
+    public func desiredPlists(config: TenderConfig, resolved: ResolvedEnvironment, tenderExecutable: String) -> [String: [String: Any]] {
         var result: [String: [String: Any]] = [:]
         for name in config.managedServiceNames {
             let service = config.services[name]!
@@ -103,7 +103,7 @@ public struct Reconciler: Sendable {
                 service: service,
                 resolvedCommand: path,
                 servicePath: CommandResolver.servicePath(for: [resolution], custom: service.env["PATH"]),
-                upliftExecutable: upliftExecutable,
+                tenderExecutable: tenderExecutable,
                 paths: paths,
                 logs: config.logs,
                 dependencyWaits: waits
@@ -113,7 +113,7 @@ public struct Reconciler: Sendable {
         return result
     }
 
-    /// Names of services whose LaunchAgent Uplift installed earlier.
+    /// Names of services whose LaunchAgent Tender installed earlier.
     public func installedServices() -> [String] {
         let files = (try? FileManager.default.contentsOfDirectory(atPath: paths.launchAgentsDir.path)) ?? []
         return files.compactMap { file -> String? in
@@ -124,7 +124,7 @@ public struct Reconciler: Sendable {
 
     // MARK: Plan
 
-    public func plan(config: UpliftConfig, desired: [String: [String: Any]]) -> ApplyPlan {
+    public func plan(config: TenderConfig, desired: [String: [String: Any]]) -> ApplyPlan {
         var changes: [PlannedChange] = []
         let installed = Set(installedServices())
 
@@ -159,7 +159,7 @@ public struct Reconciler: Sendable {
 
     // MARK: Apply
 
-    public func apply(_ plan: ApplyPlan, config: UpliftConfig, resolved: ResolvedEnvironment, build: Bool,
+    public func apply(_ plan: ApplyPlan, config: TenderConfig, resolved: ResolvedEnvironment, build: Bool,
                       progress: (String) -> Void = { _ in }) -> [ApplyOutcome] {
         var outcomes: [ApplyOutcome] = []
         try? FileManager.default.createDirectory(at: paths.launchAgentsDir, withIntermediateDirectories: true)
@@ -185,7 +185,7 @@ public struct Reconciler: Sendable {
         return outcomes
     }
 
-    private func install(_ change: PlannedChange, config: UpliftConfig, resolved: ResolvedEnvironment, build: Bool,
+    private func install(_ change: PlannedChange, config: TenderConfig, resolved: ResolvedEnvironment, build: Bool,
                          progress: (String) -> Void) -> ApplyOutcome {
         let service = config.services[change.name]!
         guard let plist = change.plist else {

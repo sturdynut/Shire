@@ -39,7 +39,7 @@ public struct Validator: Sendable {
     }
 
     /// `resolved` is optional so the schema can be checked without spawning a shell.
-    public func validate(_ config: UpliftConfig, resolved: ResolvedEnvironment? = nil) -> [ValidationIssue] {
+    public func validate(_ config: TenderConfig, resolved: ResolvedEnvironment? = nil) -> [ValidationIssue] {
         var issues: [ValidationIssue] = []
         let names = config.services.keys.sorted()
 
@@ -57,7 +57,7 @@ public struct Validator: Sendable {
                 } else if config.services[dependency] == nil {
                     issues.append(.init(.error, name, "depends on “\(dependency)”, which isn’t a service in this file."))
                 } else if config.services[dependency]?.health?.endpoint == nil {
-                    issues.append(.init(.warning, name, "depends on “\(dependency)”, which has no health check, so Uplift can’t wait for it to be ready."))
+                    issues.append(.init(.warning, name, "depends on “\(dependency)”, which has no health check, so Tender can’t wait for it to be ready."))
                 }
             }
             if let command = service.command, let resolution = resolved?.commands[command] {
@@ -66,7 +66,7 @@ public struct Validator: Sendable {
                     issues.append(.init(.error, name, "command “\(command)” not found: \(hint)"))
                 } else if let manager = resolution.versionManager {
                     let what = command.contains("/") ? "\(resolution.path!) belongs to \(manager)" : "“\(command)” comes from \(manager) (\(resolution.path!))"
-                    issues.append(.init(.warning, name, "\(what). The path changes when you switch versions; Uplift re-resolves it on every apply."))
+                    issues.append(.init(.warning, name, "\(what). The path changes when you switch versions; Tender re-resolves it on every apply."))
                 }
             }
         }
@@ -91,10 +91,10 @@ public struct Validator: Sendable {
                 ("env", !service.env.isEmpty), ("envFile", service.envFile != nil), ("build", service.build != nil),
             ]
             for (key, present) in managedOnly where present {
-                issues.append(.init(.error, name, "“\(key)” doesn’t apply to an external service; Uplift only watches “\(service.external!)”."))
+                issues.append(.init(.error, name, "“\(key)” doesn’t apply to an external service; Tender only watches “\(service.external!)”."))
             }
         } else if service.command == nil || service.command!.isEmpty {
-            issues.append(.init(.error, name, "needs a “command” (or “external:” to watch a launchd job Uplift doesn’t own)."))
+            issues.append(.init(.error, name, "needs a “command” (or “external:” to watch a launchd job Tender doesn’t own)."))
         }
         if let serve = service.serve, !(1...65535).contains(serve) {
             issues.append(.init(.error, name, "“serve” must be a port between 1 and 65535."))
@@ -147,7 +147,7 @@ public struct Validator: Sendable {
         return []
     }
 
-    private func checkPortClashes(_ config: UpliftConfig) -> [ValidationIssue] {
+    private func checkPortClashes(_ config: TenderConfig) -> [ValidationIssue] {
         var issues: [ValidationIssue] = []
         var byPort: [Int: [String]] = [:]
         var byServe: [Int: [String]] = [:]

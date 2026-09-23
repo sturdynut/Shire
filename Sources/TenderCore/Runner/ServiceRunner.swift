@@ -27,7 +27,7 @@ public struct RunnerOptions: Equatable, Sendable {
     }
 }
 
-/// `uplift run`: what launchd actually starts. It waits for dependencies, loads the env file, runs the real
+/// `tender run`: what launchd actually starts. It waits for dependencies, loads the env file, runs the real
 /// command with its output captured into rotating logs, forwards stop signals, and exits with the command's status
 /// so launchd's restart policy still applies.
 public final class ServiceRunner: @unchecked Sendable {
@@ -64,7 +64,7 @@ public final class ServiceRunner: @unchecked Sendable {
         if !fm.fileExists(atPath: options.command) {
             var message = "no such file: \(options.command)"
             if let manager = CommandResolver.versionManager(forPath: options.command) {
-                message += " (\(manager) switched versions since the last apply; run `uplift apply` to re-resolve)"
+                message += " (\(manager) switched versions since the last apply; run `tender apply` to re-resolve)"
             }
             say(message, error: true)
             return Self.exitCommandNotFound
@@ -191,7 +191,7 @@ public final class ServiceRunner: @unchecked Sendable {
     }()
 
     private func say(_ message: String, error: Bool = false) {
-        let line = "\(Self.timestamp.string(from: Date())) uplift: \(message)"
+        let line = "\(Self.timestamp.string(from: Date())) tender: \(message)"
         (error ? stderrLog : stdoutLog).write(line: line)
     }
 }

@@ -33,7 +33,7 @@ public struct ServiceStatus: Equatable, Sendable {
     public var name: String
     public var process: ProcessState
     public var health: HealthResult?
-    /// A plain-language reason, when Uplift recognises what went wrong.
+    /// A plain-language reason, when Tender recognises what went wrong.
     public var cause: String?
 
     public init(name: String, process: ProcessState, health: HealthResult? = nil, cause: String? = nil) {
@@ -46,13 +46,13 @@ public struct ServiceStatus: Equatable, Sendable {
 
 /// Works out process state from launchd and the event log, then names the likely cause from a fixed list of patterns.
 public struct StatusInspector: Sendable {
-    public var paths: UpliftPaths
+    public var paths: TenderPaths
     public var launchControl: LaunchControl
     public var crashLoop: CrashLoopRule
     public var fileExists: @Sendable (String) -> Bool
     public var directoryExists: @Sendable (String) -> Bool
 
-    public init(paths: UpliftPaths, launchControl: LaunchControl, crashLoop: CrashLoopRule,
+    public init(paths: TenderPaths, launchControl: LaunchControl, crashLoop: CrashLoopRule,
                 fileExists: @escaping @Sendable (String) -> Bool = { FileManager.default.fileExists(atPath: $0) },
                 directoryExists: @escaping @Sendable (String) -> Bool = { path in
                     var isDir: ObjCBool = false
@@ -124,9 +124,9 @@ public struct StatusInspector: Sendable {
             if let command, !fileExists(command) {
                 if let manager = CommandResolver.versionManager(forPath: command) {
                     let tool = (command as NSString).lastPathComponent
-                    return "\(tool) moved: \(manager) switched versions since the last apply. Run `uplift apply` to re-resolve."
+                    return "\(tool) moved: \(manager) switched versions since the last apply. Run `tender apply` to re-resolve."
                 }
-                return "\(command) no longer exists. Run `uplift apply` to re-resolve it."
+                return "\(command) no longer exists. Run `tender apply` to re-resolve it."
             }
             return "command not found (exit 127)."
         }

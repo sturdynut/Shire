@@ -1,4 +1,4 @@
-# Copy to ~/.config/uplift/config.yaml, then run `uplift validate` and `uplift apply`.
+# Copy to ~/.config/tender/config.yaml, then run `tender validate` and `tender apply`.
 
 serverMode: { keepAwake: true }
 presets: { tailscale: { enabled: true } }
@@ -13,7 +13,7 @@ alerts:
 logs: { maxSize: 10MB, keep: 3 }
 
 services:
-  # Homebrew runs Postgres; Uplift only watches it.
+  # Homebrew runs Postgres; Tender only watches it.
   postgres:
     external: homebrew.mxcl.postgresql@16
     health: { type: tcp, port: 5432 }

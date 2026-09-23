@@ -1,11 +1,11 @@
 import ArgumentParser
 import Foundation
-import UpliftCore
+import TenderCore
 
 @main
-struct Uplift: AsyncParsableCommand {
+struct Tender: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "uplift",
+        commandName: "tender",
         abstract: "Keep a Mac in the state config.yaml describes: services running, healthy, and explained when they aren't.",
         version: "0.1.0",
         subcommands: [Apply.self, Status.self, Start.self, Stop.self, Restart.self, Logs.self, Validate.self, Run.self]
@@ -34,11 +34,11 @@ struct Apply: ParsableCommand {
 
         let executable = currentExecutablePath()
         if executable.contains("/.build/") {
-            print(Terminal.amber("note") + "  LaunchAgents will point at \(executable), a build folder. Install uplift (make install) before relying on it.")
+            print(Terminal.amber("note") + "  LaunchAgents will point at \(executable), a build folder. Install tender (make install) before relying on it.")
         }
 
         let reconciler = Reconciler(paths: paths, launchControl: SystemLaunchControl())
-        let desired = reconciler.desiredPlists(config: config, resolved: resolved, upliftExecutable: executable)
+        let desired = reconciler.desiredPlists(config: config, resolved: resolved, tenderExecutable: executable)
         let plan = reconciler.plan(config: config, desired: desired)
 
         let width = max(12, (plan.changes.map(\.name.count).max() ?? 0) + 2)
@@ -146,13 +146,13 @@ struct ServiceArgument: ParsableArguments {
     var service: String
 }
 
-private func managedService(_ name: String, in config: UpliftConfig) throws -> ServiceConfig {
+private func managedService(_ name: String, in config: TenderConfig) throws -> ServiceConfig {
     guard let service = config.services[name] else {
         let known = config.services.keys.sorted().joined(separator: ", ")
-        throw UpliftError("No service named “\(name)”. Known services: \(known).")
+        throw TenderError("No service named “\(name)”. Known services: \(known).")
     }
     if let external = service.external {
-        throw UpliftError("\(name) is external (\(external)); Uplift only watches it. Use the tool that owns it, e.g. brew services.")
+        throw TenderError("\(name) is external (\(external)); Tender only watches it. Use the tool that owns it, e.g. brew services.")
     }
     return service
 }
@@ -169,7 +169,7 @@ struct Start: ParsableCommand {
         let label = LaunchAgentBuilder.label(for: target.service)
         let url = paths.plist(forLabel: label)
         guard FileManager.default.fileExists(atPath: url.path) else {
-            throw UpliftError("\(target.service) hasn’t been applied yet. Run `uplift apply`.")
+            throw TenderError("\(target.service) hasn’t been applied yet. Run `tender apply`.")
         }
         if control.isLoaded(label) {
             try control.kickstart(label, kill: false)
@@ -189,7 +189,7 @@ struct Stop: ParsableCommand {
         let (_, config) = try options.load()
         _ = try managedService(target.service, in: config)
         try SystemLaunchControl().bootout(LaunchAgentBuilder.label(for: target.service))
-        print("\(Terminal.green("✓")) \(target.service) stopped. It starts again on `uplift start \(target.service)` or `uplift apply`.")
+        print("\(Terminal.green("✓")) \(target.service) stopped. It starts again on `tender start \(target.service)` or `tender apply`.")
     }
 }
 
@@ -208,7 +208,7 @@ struct Restart: ParsableCommand {
         let label = LaunchAgentBuilder.label(for: target.service)
         let url = paths.plist(forLabel: label)
         guard let plist = LaunchAgentBuilder.read(url) else {
-            throw UpliftError("\(target.service) hasn’t been applied yet. Run `uplift apply`.")
+            throw TenderError("\(target.service) hasn’t been applied yet. Run `tender apply`.")
         }
         if !noBuild, let build = service.build {
             print(Terminal.dim("building \(target.service): \(build)"))
@@ -216,7 +216,7 @@ struct Restart: ParsableCommand {
             let cwd = service.cwd.map { PathExpander.expand($0, home: paths.home.path) }
             if !ShellServiceBuilder().build(name: target.service, command: build, cwd: cwd,
                                             environment: reconciler.buildEnvironment(service: service, plist: plist)) {
-                throw UpliftError("build failed; \(target.service) was left running as it was.")
+                throw TenderError("build failed; \(target.service) was left running as it was.")
             }
         }
         if control.isLoaded(label) {
@@ -250,10 +250,10 @@ struct Logs: ParsableCommand {
     func run() throws {
         let (paths, config) = try options.load()
         guard config.services[target.service] != nil else {
-            throw UpliftError("No service named “\(target.service)”.")
+            throw TenderError("No service named “\(target.service)”.")
         }
         if let external = config.services[target.service]?.external {
-            throw UpliftError("\(target.service) is external (\(external)); its logs are wherever its own LaunchAgent writes them.")
+            throw TenderError("\(target.service) is external (\(external)); its logs are wherever its own LaunchAgent writes them.")
         }
         var files: [URL] = []
         if !stderr { files.append(paths.stdoutLog(for: target.service)) }
@@ -309,7 +309,7 @@ struct Validate: ParsableCommand {
 
 struct Run: ParsableCommand {
     static let configuration = CommandConfiguration(
-        abstract: "Run a service in the foreground with Uplift's logging (this is what LaunchAgents call).",
+        abstract: "Run a service in the foreground with Tender's logging (this is what LaunchAgents call).",
         shouldDisplay: false
     )
 

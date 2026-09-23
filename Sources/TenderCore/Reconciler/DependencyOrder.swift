@@ -3,7 +3,7 @@ import Foundation
 public enum DependencyOrder {
     /// Service names with dependencies before dependents; ties broken alphabetically so output is stable.
     /// Services in a cycle (which validation reports) are appended at the end.
-    public static func sorted(_ config: UpliftConfig) -> [String] {
+    public static func sorted(_ config: TenderConfig) -> [String] {
         var remaining = Set(config.services.keys)
         var result: [String] = []
         while !remaining.isEmpty {
@@ -21,7 +21,7 @@ public enum DependencyOrder {
     }
 
     /// One dependency loop, as a path like `a → b → a`, or nil.
-    public static func cycle(in config: UpliftConfig) -> [String]? {
+    public static func cycle(in config: TenderConfig) -> [String]? {
         enum Mark { case visiting, done }
         var marks: [String: Mark] = [:]
         var stack: [String] = []

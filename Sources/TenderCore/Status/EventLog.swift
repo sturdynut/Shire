@@ -1,6 +1,6 @@
 import Foundation
 
-/// One start or exit of a service, written by `uplift run` so `status` can tell a crash loop from a single crash.
+/// One start or exit of a service, written by `tender run` so `status` can tell a crash loop from a single crash.
 public struct ServiceEvent: Codable, Equatable, Sendable {
     public enum Kind: String, Codable, Sendable { case start, exit }
 

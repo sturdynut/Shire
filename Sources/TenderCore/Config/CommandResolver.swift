@@ -90,9 +90,9 @@ public struct CommandResolver: Sendable {
         let lookup = isZsh ? "whence -p" : "type -P"
         var script = ""
         for command in commands where Self.isSafeCommandName(command) {
-            script += "printf '__UPLIFT__%s=%s\\n' '\(command)' \"$(\(lookup) '\(command)' 2>/dev/null)\"; "
+            script += "printf '__TENDER__%s=%s\\n' '\(command)' \"$(\(lookup) '\(command)' 2>/dev/null)\"; "
         }
-        script += "printf '__UPLIFT_PATH__=%s\\n' \"$PATH\""
+        script += "printf '__TENDER_PATH__=%s\\n' \"$PATH\""
         let result = try runner.run(shell, ["-ilc", script], environment: nil, timeout: 20)
         if result.timedOut {
             throw ResolveError.shellFailed("\(shell) didn’t finish within 20 seconds")
@@ -104,10 +104,10 @@ public struct CommandResolver: Sendable {
         var commands: [String: String] = [:]
         var path = launchdDefaultPath
         for line in output.split(separator: "\n", omittingEmptySubsequences: true) {
-            if line.hasPrefix("__UPLIFT_PATH__=") {
-                path = String(line.dropFirst("__UPLIFT_PATH__=".count))
-            } else if line.hasPrefix("__UPLIFT__"), let eq = line.firstIndex(of: "=") {
-                let name = String(line[line.index(line.startIndex, offsetBy: "__UPLIFT__".count)..<eq])
+            if line.hasPrefix("__TENDER_PATH__=") {
+                path = String(line.dropFirst("__TENDER_PATH__=".count))
+            } else if line.hasPrefix("__TENDER__"), let eq = line.firstIndex(of: "=") {
+                let name = String(line[line.index(line.startIndex, offsetBy: "__TENDER__".count)..<eq])
                 commands[name] = String(line[line.index(after: eq)...])
             }
         }

@@ -1,5 +1,5 @@
 import Foundation
-@testable import UpliftCore
+@testable import TenderCore
 
 /// Records launchctl calls and keeps a set of "loaded" labels.
 final class FakeLaunchControl: LaunchControl, @unchecked Sendable {
@@ -70,7 +70,7 @@ final class TempHome {
     let url: URL
 
     init() throws {
-        url = FileManager.default.temporaryDirectory.appending(path: "uplift-tests-\(UUID().uuidString)")
+        url = FileManager.default.temporaryDirectory.appending(path: "tender-tests-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
     }
 
@@ -78,7 +78,7 @@ final class TempHome {
         try? FileManager.default.removeItem(at: url)
     }
 
-    var paths: UpliftPaths { UpliftPaths(home: url) }
+    var paths: TenderPaths { TenderPaths(home: url) }
 
     @discardableResult
     func makeDirectory(_ relative: String) throws -> URL {

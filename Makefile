@@ -9,11 +9,11 @@ build:
 test:
 	swift test
 
-# LaunchAgents point at the installed binary, so install before `uplift apply`.
+# LaunchAgents point at the installed binary, so install before `tender apply`.
 install: build
 	mkdir -p $(BINDIR)
-	install -m 755 .build/release/uplift $(BINDIR)/uplift
-	@echo "Installed $(BINDIR)/uplift"
+	install -m 755 .build/release/tender $(BINDIR)/tender
+	@echo "Installed $(BINDIR)/tender"
 
 uninstall:
-	rm -f $(BINDIR)/uplift
+	rm -f $(BINDIR)/tender

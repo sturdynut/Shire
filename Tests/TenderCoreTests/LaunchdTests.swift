@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import UpliftCore
+@testable import TenderCore
 
 @Suite("Command resolution")
 struct CommandResolverTests {
@@ -8,9 +8,9 @@ struct CommandResolverTests {
         let output = """
         Welcome back!
         nvm: using v22.14.0
-        __UPLIFT__pnpm=\(nvm22_14)/pnpm
-        __UPLIFT__ghost=
-        __UPLIFT_PATH__=\(nvm22_14):/opt/homebrew/bin:/usr/bin
+        __TENDER__pnpm=\(nvm22_14)/pnpm
+        __TENDER__ghost=
+        __TENDER_PATH__=\(nvm22_14):/opt/homebrew/bin:/usr/bin
         """
         let answer = CommandResolver.parse(output)
         #expect(answer.commands["pnpm"] == "\(nvm22_14)/pnpm")
@@ -19,7 +19,7 @@ struct CommandResolverTests {
     }
 
     @Test func resolvesBareAndAbsoluteCommands() throws {
-        let runner = FakeRunner(stdout: "__UPLIFT__pnpm=\(nvm22_14)/pnpm\n__UPLIFT__ghost=\n__UPLIFT_PATH__=/opt/homebrew/bin\n")
+        let runner = FakeRunner(stdout: "__TENDER__pnpm=\(nvm22_14)/pnpm\n__TENDER__ghost=\n__TENDER_PATH__=/opt/homebrew/bin\n")
         let resolver = CommandResolver(shell: "/bin/zsh", home: "/Users/me", runner: runner, fileExists: { $0 == "/Users/me/bin/tool" })
         let env = try resolver.resolve(["pnpm", "ghost", "~/bin/tool", "/missing/tool"])
         #expect(env.commands["pnpm"]?.path == "\(nvm22_14)/pnpm")
@@ -54,21 +54,21 @@ struct CommandResolverTests {
 
 @Suite("LaunchAgent plists")
 struct LaunchAgentBuilderTests {
-    func plist(for name: String, config: UpliftConfig, home: URL = URL(fileURLWithPath: "/Users/me")) -> [String: Any] {
-        let paths = UpliftPaths(home: home)
+    func plist(for name: String, config: TenderConfig, home: URL = URL(fileURLWithPath: "/Users/me")) -> [String: Any] {
+        let paths = TenderPaths(home: home)
         let reconciler = Reconciler(paths: paths, launchControl: FakeLaunchControl())
-        return reconciler.desiredPlists(config: config, resolved: planResolution(), upliftExecutable: "/Users/me/.local/bin/uplift")[name]!
+        return reconciler.desiredPlists(config: config, resolved: planResolution(), tenderExecutable: "/Users/me/.local/bin/tender")[name]!
     }
 
     @Test func webServicePlist() throws {
         let config = try ConfigLoader.parse(planConfigYAML)
         let web = plist(for: "doulasimply-web", config: config)
-        #expect(web["Label"] as? String == "com.uplift.doulasimply-web")
+        #expect(web["Label"] as? String == "com.tender.doulasimply-web")
         #expect(web["WorkingDirectory"] as? String == "/Users/me/Code/DoulaSimply/web")
         #expect(web["KeepAlive"] as? Bool == true)
         #expect(web["RunAtLoad"] as? Bool == true)
         let args = try #require(web["ProgramArguments"] as? [String])
-        #expect(Array(args.prefix(3)) == ["/Users/me/.local/bin/uplift", "run", "doulasimply-web"])
+        #expect(Array(args.prefix(3)) == ["/Users/me/.local/bin/tender", "run", "doulasimply-web"])
         #expect(Array(args.suffix(4)) == ["\(nvm22_14)/pnpm", "preview", "--port", "5174"])
         // Waits for its dependency's health endpoint before starting.
         let wait = try #require(args.firstIndex(of: "--wait-for"))
@@ -76,7 +76,7 @@ struct LaunchAgentBuilderTests {
         #expect(!args.contains("--env-file"))
         let env = try #require(web["EnvironmentVariables"] as? [String: String])
         #expect(env["PATH"]?.hasPrefix(nvm22_14) == true)
-        #expect(env["UPLIFT_SERVICE"] == "doulasimply-web")
+        #expect(env["TENDER_SERVICE"] == "doulasimply-web")
     }
 
     @Test func envFileIsPassedAsAPathNeverAsValues() throws {
@@ -90,8 +90,8 @@ struct LaunchAgentBuilderTests {
 
     @Test func externalServicesGetNoPlist() throws {
         let config = try ConfigLoader.parse(planConfigYAML)
-        let reconciler = Reconciler(paths: UpliftPaths(home: URL(fileURLWithPath: "/Users/me")), launchControl: FakeLaunchControl())
-        let all = reconciler.desiredPlists(config: config, resolved: planResolution(), upliftExecutable: "/u")
+        let reconciler = Reconciler(paths: TenderPaths(home: URL(fileURLWithPath: "/Users/me")), launchControl: FakeLaunchControl())
+        let all = reconciler.desiredPlists(config: config, resolved: planResolution(), tenderExecutable: "/u")
         #expect(Set(all.keys) == ["doulasimply-api", "doulasimply-web", "tradingview"])
     }
 
@@ -103,8 +103,8 @@ struct LaunchAgentBuilderTests {
         """
         let config = try ConfigLoader.parse(yaml)
         let resolved = ResolvedEnvironment(commands: ["/bin/echo": CommandResolution(command: "/bin/echo", path: "/bin/echo")], loginPath: "")
-        let reconciler = Reconciler(paths: UpliftPaths(home: URL(fileURLWithPath: "/Users/me")), launchControl: FakeLaunchControl())
-        let plists = reconciler.desiredPlists(config: config, resolved: resolved, upliftExecutable: "/u")
+        let reconciler = Reconciler(paths: TenderPaths(home: URL(fileURLWithPath: "/Users/me")), launchControl: FakeLaunchControl())
+        let plists = reconciler.desiredPlists(config: config, resolved: resolved, tenderExecutable: "/u")
         #expect((plists["a"]?["KeepAlive"] as? [String: Bool]) == ["SuccessfulExit": false])
         #expect(plists["b"]?["KeepAlive"] as? Bool == false)
     }
@@ -137,14 +137,14 @@ struct LaunchAgentBuilderTests {
 struct LaunchJobInfoTests {
     @Test func parsesARunningJob() {
         let output = """
-        gui/501/com.uplift.web = {
+        gui/501/com.tender.web = {
         \tactive count = 1
-        \tpath = /Users/me/Library/LaunchAgents/com.uplift.web.plist
+        \tpath = /Users/me/Library/LaunchAgents/com.tender.web.plist
         \tstate = running
 
-        \tprogram = /Users/me/.local/bin/uplift
+        \tprogram = /Users/me/.local/bin/tender
         \targuments = {
-        \t\t/Users/me/.local/bin/uplift
+        \t\t/Users/me/.local/bin/tender
         \t\trun
         \t\tweb
         \t}
@@ -162,8 +162,8 @@ struct LaunchJobInfoTests {
         #expect(info.pid == 739)
         #expect(info.runs == 4)
         #expect(info.lastExitCode == 127)
-        #expect(info.program == "/Users/me/.local/bin/uplift")
-        #expect(info.arguments == ["/Users/me/.local/bin/uplift", "run", "web"])
+        #expect(info.program == "/Users/me/.local/bin/tender")
+        #expect(info.arguments == ["/Users/me/.local/bin/tender", "run", "web"])
         #expect(info.isRunning)
     }
 

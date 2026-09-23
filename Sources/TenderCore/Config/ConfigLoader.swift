@@ -24,7 +24,7 @@ public enum ConfigError: Error, Equatable, CustomStringConvertible {
 }
 
 public enum ConfigLoader {
-    public static func load(from url: URL) throws -> UpliftConfig {
+    public static func load(from url: URL) throws -> TenderConfig {
         guard FileManager.default.fileExists(atPath: url.path) else {
             throw ConfigError.fileNotFound(url.path)
         }
@@ -32,14 +32,14 @@ public enum ConfigLoader {
         return try parse(text)
     }
 
-    public static func parse(_ text: String) throws -> UpliftConfig {
+    public static func parse(_ text: String) throws -> TenderConfig {
         let node: Node?
         do {
             node = try Yams.compose(yaml: text)
         } catch {
             throw ConfigError.invalidYAML(String(describing: error))
         }
-        guard let node else { return UpliftConfig() }
+        guard let node else { return TenderConfig() }
         try checkKeys(node)
 
         let raw: RawConfig
@@ -50,7 +50,7 @@ public enum ConfigLoader {
         } catch {
             throw ConfigError.invalidYAML(String(describing: error))
         }
-        return UpliftConfig(
+        return TenderConfig(
             serverMode: raw.serverMode ?? ServerMode(),
             presets: raw.presets ?? Presets(),
             remote: raw.remote ?? RemoteSettings(),

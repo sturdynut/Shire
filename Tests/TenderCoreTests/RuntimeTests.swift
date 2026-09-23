@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import UpliftCore
+@testable import TenderCore
 
 @Suite("Env files")
 struct EnvFileTests {
@@ -95,7 +95,7 @@ struct StatusTests {
         let config = try ConfigLoader.parse(planConfigYAML)
         let control = FakeLaunchControl()
         let reconciler = Reconciler(paths: home.paths, launchControl: control, builder: FakeBuilder(succeeds: true))
-        let desired = reconciler.desiredPlists(config: config, resolved: planResolution(), upliftExecutable: "/u")
+        let desired = reconciler.desiredPlists(config: config, resolved: planResolution(), tenderExecutable: "/u")
         _ = reconciler.apply(reconciler.plan(config: config, desired: desired), config: config, resolved: planResolution(), build: true)
 
         let inspector = StatusInspector(paths: home.paths, launchControl: control, crashLoop: rule,
@@ -105,7 +105,7 @@ struct StatusTests {
             name: "doulasimply-web", service: config.services["doulasimply-web"]!,
             state: .crashLooping(lastExit: 127, exits: 14, window: rule.window),
             dependencyHealth: ["doulasimply-api": .healthy(detail: "ok")])
-        #expect(cause == "pnpm moved: nvm switched versions since the last apply. Run `uplift apply` to re-resolve.")
+        #expect(cause == "pnpm moved: nvm switched versions since the last apply. Run `tender apply` to re-resolve.")
     }
 
     @Test func likelyCausePointsAtADownDependency() throws {
@@ -120,7 +120,7 @@ struct StatusTests {
 
     @Test func likelyCauseReadsPortClashesFromTheLog() throws {
         let home = try TempHome()
-        try home.write("Library/Logs/uplift/web.stderr.log", "Error: listen EADDRINUSE: address already in use :::5174\n")
+        try home.write("Library/Logs/tender/web.stderr.log", "Error: listen EADDRINUSE: address already in use :::5174\n")
         let inspector = StatusInspector(paths: home.paths, launchControl: FakeLaunchControl(), crashLoop: rule)
         let cause = inspector.likelyCause(name: "web", service: ServiceConfig(command: "pnpm"), state: .exited(code: 1), dependencyHealth: [:])
         #expect(cause == "its port is already in use by another process.")
@@ -135,7 +135,7 @@ struct StatusTests {
     }
 }
 
-@Suite("uplift run", .serialized)
+@Suite("tender run", .serialized)
 struct ServiceRunnerTests {
     func options(_ home: TempHome, _ command: String, _ args: [String] = [], envFile: URL? = nil, waitFor: [HostPort] = [], waitTimeout: TimeInterval = 120) -> RunnerOptions {
         RunnerOptions(name: "svc", logDir: home.url.appending(path: "logs"), maxLogSize: 1 << 20, keepLogs: 2,
@@ -153,7 +153,7 @@ struct ServiceRunnerTests {
         #expect(runner.run() == 3)
         #expect(try log(home, "stdout").contains("hello"))
         #expect(try log(home, "stderr").contains("oops"))
-        #expect(try log(home, "stderr").contains("uplift: exited 3"))
+        #expect(try log(home, "stderr").contains("tender: exited 3"))
         let events = EventLog(url: home.url.appending(path: "events/svc.jsonl")).read()
         #expect(events.map(\.kind) == [.start, .exit])
         #expect(events.last?.code == 3)

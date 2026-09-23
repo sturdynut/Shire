@@ -1,14 +1,14 @@
-# Uplift — Product Plan
+# Tender — Product Plan
 
-Uplift is a small, Mac-only app that makes it easy to use a laptop or desktop Mac as a dependable personal server.
+Tender is a small, Mac-only app that makes it easy to use a laptop or desktop Mac as a dependable personal server.
 
 It keeps a few important background services running, keeps the Mac awake when needed, tells you when something breaks, and makes it obvious whether everything is healthy, from the Mac or from your phone.
 
 The core idea:
 
-> Declare what should be running, and Uplift keeps the Mac in that desired state.
+> Declare what should be running, and Tender keeps the Mac in that desired state.
 
-Uplift is **not** a general-purpose process manager or a `launchd` GUI. It stays opinionated around running a small set of personal services on a Mac.
+Tender is **not** a general-purpose process manager or a `launchd` GUI. It stays opinionated around running a small set of personal services on a Mac.
 
 UI designs (light and dark, Mac and phone): https://claude.ai/artifact/NB48q5ZLntxFK8LPiAkVBC
 
@@ -16,7 +16,7 @@ UI designs (light and dark, Mac and phone): https://claude.ai/artifact/NB48q5ZLn
 
 ## What it will run first
 
-| Service | What | How Uplift treats it |
+| Service | What | How Tender treats it |
 |---|---|---|
 | `doulasimply-api` | DoulaSimply API (`~/Code/DoulaSimply/server`), port 3001 | managed, built with `pnpm build`, run with `node dist/index.js` |
 | `doulasimply-web` | DoulaSimply web app (`~/Code/DoulaSimply/web`), port 5174 | managed, built with `pnpm build`, served with `pnpm preview`, shared on the tailnet |
@@ -25,7 +25,7 @@ UI designs (light and dark, Mac and phone): https://claude.ai/artifact/NB48q5ZLn
 
 **DoulaSimply on this Mac is a demo/staging copy with seed data only.** It uses its own local database (`.env.demo`), never the Neon or production URLs. Production stays on AWS. Real client data (PHI) never runs on this Mac.
 
-**The TradingView MCP itself is not a service.** It uses stdio, so Claude Code launches it per session. What Uplift keeps running is TradingView Desktop with the debug port open.
+**The TradingView MCP itself is not a service.** It uses stdio, so Claude Code launches it per session. What Tender keeps running is TradingView Desktop with the debug port open.
 
 ---
 
@@ -33,7 +33,7 @@ UI designs (light and dark, Mac and phone): https://claude.ai/artifact/NB48q5ZLn
 
 - Keep the DoulaSimply demo running and reachable from your phone
 - Keep TradingView Desktop open with its debug port for the MCP
-- Watch services Uplift doesn't own (Postgres via `brew services`)
+- Watch services Tender doesn't own (Postgres via `brew services`)
 - Ensure Tailscale is available
 - Keep the Mac awake while server mode is enabled
 - Restart services when they crash, and name the reason
@@ -48,11 +48,11 @@ UI designs (light and dark, Mac and phone): https://claude.ai/artifact/NB48q5ZLn
 
 ### 1. YAML is the source of truth
 
-One human-readable config file, easy to keep in Git. Edit it in VS Code, generate it with scripts, commit it to dotfiles. Uplift watches the file and validates every save. No form-based editor in v1.
+One human-readable config file, easy to keep in Git. Edit it in VS Code, generate it with scripts, commit it to dotfiles. Tender watches the file and validates every save. No form-based editor in v1.
 
 ### 2. Use macOS primitives instead of rebuilding them
 
-`launchd` owns process lifecycle. Uplift configures and observes it; it does not replace it.
+`launchd` owns process lifecycle. Tender configures and observes it; it does not replace it.
 
 ### 3. Opinionated over exhaustive
 
@@ -60,7 +60,7 @@ Support only what personal server workloads need: command, arguments, working di
 
 ### 4. Health is different from process state
 
-A live process isn't necessarily a usable app. Uplift distinguishes stopped, starting, running, unhealthy, healthy and **crash-looping**.
+A live process isn't necessarily a usable app. Tender distinguishes stopped, starting, running, unhealthy, healthy and **crash-looping**.
 
 ### 5. Strictly local
 
@@ -77,24 +77,24 @@ When something fails, say why in plain words and offer the fix. A small fixed se
 ## Components
 
 ```text
-config.yaml ──► uplift (CLI) ──► LaunchAgents ──► services
+config.yaml ──► tender (CLI) ──► LaunchAgents ──► services
                      │
-                     └──► uplift-agent (always running, itself a LaunchAgent)
+                     └──► tender-agent (always running, itself a LaunchAgent)
                             ├─ health checks
                             ├─ keep-awake power assertion
                             ├─ readiness checks
                             ├─ alerts
                             └─ phone status page (via tailscale serve)
 
-Uplift.app (menu bar + window) ──► talks to uplift-agent, shares the Core library
+Tender.app (menu bar + window) ──► talks to tender-agent, shares the Core library
 ```
 
-The **CLI runs and exits**. Anything continuous (health checks, keep-awake, alerts, the phone page) lives in **uplift-agent**, a LaunchAgent generated by Uplift like any other, so it survives the menu bar app quitting.
+The **CLI runs and exits**. Anything continuous (health checks, keep-awake, alerts, the phone page) lives in **tender-agent**, a LaunchAgent generated by Tender like any other, so it survives the menu bar app quitting.
 
 ## Config
 
 ```text
-~/.config/uplift/config.yaml
+~/.config/tender/config.yaml
 ```
 
 ```yaml
@@ -148,7 +148,7 @@ config.yaml → validate → resolve (commands, paths) → desired state
   → LaunchAgent plists → running processes → health → status
 ```
 
-The core is a library used by the CLI, uplift-agent and the app.
+The core is a library used by the CLI, tender-agent and the app.
 
 ### Resolving commands (important)
 
@@ -156,9 +156,9 @@ launchd starts services with `PATH=/usr/bin:/bin:/usr/sbin:/sbin` and does not e
 
 - On every `apply`, resolve each command to an absolute path using the login shell, and expand `~`.
 - Show resolved paths in validation (`pnpm → ~/.nvm/versions/node/v22.20.0/bin/pnpm`), and warn when a command comes from a version manager.
-- Each plist runs a small wrapper, `uplift run <service>`, rather than the raw command. The wrapper waits for dependencies, loads `envFile` (secrets never go into the plist), runs the real command with its output captured into rotating logs, records starts and exits for crash-loop detection, and writes clear log lines (`uplift: no such file: …/v22.14.0/bin/pnpm`).
+- Each plist runs a small wrapper, `tender run <service>`, rather than the raw command. The wrapper waits for dependencies, loads `envFile` (secrets never go into the plist), runs the real command with its output captured into rotating logs, records starts and exits for crash-loop detection, and writes clear log lines (`tender: no such file: …/v22.14.0/bin/pnpm`).
 - A service's PATH is its command's folder, then any PATH the config sets, then Homebrew and the system. Not the whole login PATH: that changes on every nvm switch and would restart unrelated services (TradingView) for nothing.
-- `build:` runs on `apply` for new or changed services and on `uplift restart`, never on launchd's automatic respawns, so a crash loop doesn't rebuild every 10 seconds. A failed build leaves the running version alone.
+- `build:` runs on `apply` for new or changed services and on `tender restart`, never on launchd's automatic respawns, so a crash loop doesn't rebuild every 10 seconds. A failed build leaves the running version alone.
 
 ### Applying changes
 
@@ -169,25 +169,25 @@ launchd starts services with `PATH=/usr/bin:/bin:/usr/sbin:/sbin` and does not e
 
 ## Service kinds
 
-- **Managed** (default): Uplift generates the LaunchAgent (`com.uplift.<service>`) and owns start/stop/restart.
-- **External**: an existing launchd job Uplift doesn't own, such as `homebrew.mxcl.postgresql@16`. Uplift only watches its state and health, and can depend on it. It never edits or unloads it.
-- **GUI app**: a managed service whose command is an app bundle's binary (TradingView). If the app is already open without the right flags, the relaunch just activates the existing window. Uplift detects that (debug port closed while the app runs) and explains it.
+- **Managed** (default): Tender generates the LaunchAgent (`com.tender.<service>`) and owns start/stop/restart.
+- **External**: an existing launchd job Tender doesn't own, such as `homebrew.mxcl.postgresql@16`. Tender only watches its state and health, and can depend on it. It never edits or unloads it.
+- **GUI app**: a managed service whose command is an app bundle's binary (TradingView). If the app is already open without the right flags, the relaunch just activates the existing window. Tender detects that (debug port closed while the app runs) and explains it.
 
 ## launchd
 
-Uplift owns only agents labeled `com.uplift.*` in `~/Library/LaunchAgents/` and never touches others.
+Tender owns only agents labeled `com.tender.*` in `~/Library/LaunchAgents/` and never touches others.
 
-launchd throttles restarts (about 10 s). Uplift detects repeated exits and reports **crash-looping** with the last exit code, instead of a vague "running/stopped".
+launchd throttles restarts (about 10 s). Tender detects repeated exits and reports **crash-looping** with the last exit code, instead of a vague "running/stopped".
 
 ## Keep-awake
 
-A native power assertion (`IOPMAssertionCreateWithName`, prevent idle system sleep) held by uplift-agent while server mode is on.
+A native power assertion (`IOPMAssertionCreateWithName`, prevent idle system sleep) held by tender-agent while server mode is on.
 
 Limits, surfaced in Readiness rather than hidden: a MacBook sleeps when the lid closes unless it's on power with an external display (clamshell). Preventing that needs root, so it's out of scope for v1.
 
 ## Tailscale
 
-Integration, not reimplementation. Uplift detects install and connection state, shows hostname/IP, offers reconnect, uses `tailscale serve` for the phone page and per-service `serve:` sharing (HTTPS on the tailnet), and uses the tailnet login to authorize phone actions. It does not own VPN configuration.
+Integration, not reimplementation. Tender detects install and connection state, shows hostname/IP, offers reconnect, uses `tailscale serve` for the phone page and per-service `serve:` sharing (HTTPS on the tailnet), and uses the tailnet login to authorize phone actions. It does not own VPN configuration.
 
 ## Readiness
 
@@ -200,13 +200,13 @@ Checks:
 - **macOS automatic updates** install and restart overnight. The one remaining warning: set updates to download-only.
 - FileVault on (accepted: you log in after restarts)
 - Restart after power failure (`pmset autorestart`)
-- Idle sleep blocked (uplift-agent's assertion)
+- Idle sleep blocked (tender-agent's assertion)
 - Lid / clamshell behavior
 - Background items approved in Login Items
 - Phone page reachable
 - Mac health: disk space, AC vs battery, pending restart, uptime
 
-Uplift reports and links to the right System Settings pane. It never changes security settings itself.
+Tender reports and links to the right System Settings pane. It never changes security settings itself.
 
 ## Alerts
 
@@ -215,7 +215,7 @@ Channels:
 - **macOS notifications**
 - **Phone push**: web push to the status page saved to the Home Screen. Needs HTTPS (from `tailscale serve`). Travels through Apple's push service, the one exception to strictly local.
 
-No ntfy, no outside heartbeat. **The trade-off:** when the Mac is off or waiting at the login screen, nothing can alert you. The phone page not loading is the signal. After you log in, Uplift reports how long services were down.
+No ntfy, no outside heartbeat. **The trade-off:** when the Mac is off or waiting at the login screen, nothing can alert you. The phone page not loading is the signal. After you log in, Tender reports how long services were down.
 
 Rules (all on by default):
 
@@ -229,7 +229,7 @@ One alert per incident, then one on recovery.
 
 ## Phone status page
 
-A small web page served by uplift-agent through `tailscale serve`: HTTPS, reachable only on your tailnet, no App Store app, no account. Add to Home Screen to use it like an app and receive alerts. Follows the phone's light/dark setting.
+A small web page served by tender-agent through `tailscale serve`: HTTPS, reachable only on your tailnet, no App Store app, no account. Add to Home Screen to use it like an app and receive alerts. Follows the phone's light/dark setting.
 
 Shows: overall state, services (with **Open** links for services shared with `serve:`), keep-awake, Tailscale, readiness, likely cause, last log lines, recent events.
 
@@ -238,8 +238,8 @@ Actions: **Restart, on by default**, confirmed first, limited to your Tailscale 
 ## Logs
 
 ```text
-~/Library/Logs/uplift/<service>.stdout.log
-~/Library/Logs/uplift/<service>.stderr.log
+~/Library/Logs/tender/<service>.stdout.log
+~/Library/Logs/tender/<service>.stderr.log
 ```
 
 Rotation is in the MVP: size cap (default 10 MB, keep 3). UI: last 100 lines, follow, stdout/stderr/both, reveal in Finder, clear.
@@ -256,7 +256,7 @@ A fixed list of known patterns, each with a plain explanation and a fix:
 | permission denied | file or folder not accessible | show the path |
 | missing `cwd` | working folder doesn't exist | edit config |
 | dependency down | e.g. postgres not reachable | point at the dependency |
-| app running, debug port closed | TradingView opened without the flag | quit it once; Uplift relaunches it with the flag |
+| app running, debug port closed | TradingView opened without the flag | quit it once; Tender relaunches it with the flag |
 | crash-loop right after apply | the last config change broke it | show the diff, offer revert |
 
 No generic diagnosis engine.
@@ -266,17 +266,17 @@ No generic diagnosis engine.
 # CLI
 
 ```bash
-uplift apply            # reconcile config with the system (restarts only what changed)
-uplift status           # services, health, keep-awake, tailscale, readiness summary
-uplift start|stop|restart <service>
-uplift logs <service> [-f]
-uplift validate         # schema, resolved commands, cwd, ports, dependencies
-uplift doctor           # readiness checks
-uplift run <service>    # the wrapper launchd calls (not usually run by hand)
+tender apply            # reconcile config with the system (restarts only what changed)
+tender status           # services, health, keep-awake, tailscale, readiness summary
+tender start|stop|restart <service>
+tender logs <service> [-f]
+tender validate         # schema, resolved commands, cwd, ports, dependencies
+tender doctor           # readiness checks
+tender run <service>    # the wrapper launchd calls (not usually run by hand)
 ```
 
 ```text
-$ uplift status
+$ tender status
 NAME              PROCESS        HEALTH
 postgres          external       healthy
 doulasimply-api   running        healthy
@@ -285,7 +285,7 @@ tradingview       running        port 9222 open
 tailscale         running        connected
 keep-awake        active         on power
 
-readiness: 1 warning (run `uplift doctor`)
+readiness: 1 warning (run `tender doctor`)
 ```
 
 ---
@@ -314,21 +314,21 @@ Light and dark follow macOS.
 ## Phase 1 — Core ✅ (see README.md)
 
 - Parse and validate YAML
-- Resolve commands and paths on every apply; `uplift run` wrapper
+- Resolve commands and paths on every apply; `tender run` wrapper
 - Managed, external and GUI-app services; `dependsOn` start order
 - Generate/install/remove LaunchAgents; restart only what changed
 - start/stop/restart, `status`, crash-loop detection
 - env, `envFile`, `build:` step, stdout/stderr logs with rotation
 
-**Done when** `uplift apply` brings up postgres (watched), the DoulaSimply demo and TradingView with its debug port, and a moved nvm path shows as "crash-looping, exit 127, pnpm path moved" rather than silent failure.
+**Done when** `tender apply` brings up postgres (watched), the DoulaSimply demo and TradingView with its debug port, and a moved nvm path shows as "crash-looping, exit 127, pnpm path moved" rather than silent failure.
 
 ## Phase 2 — Server mode and readiness
 
-uplift-agent, keep-awake assertion, Tailscale status, `uplift doctor`, combined overall status.
+tender-agent, keep-awake assertion, Tailscale status, `tender doctor`, combined overall status.
 
 ## Phase 3 — Health checks and alerts
 
-HTTP and TCP health checks in uplift-agent, unhealthy/degraded states, macOS notifications with the rules above, and the "services were down" report after login.
+HTTP and TCP health checks in tender-agent, unhealthy/degraded states, macOS notifications with the rules above, and the "services were down" report after login.
 
 Let launchd handle crashes. Never restart a running process because one health check failed.
 
@@ -350,7 +350,7 @@ Service page, config.yaml with live checks, Readiness, Alerts. Light and dark.
 
 | Question | Decision |
 |---|---|
-| Name | **Uplift**: app, CLI (`uplift`), agent (`uplift-agent`), labels (`com.uplift.*`) |
+| Name | **Tender**: app, CLI (`tender`), agent (`tender-agent`), labels (`com.tender.*`) |
 | FileVault | Stays on. Log in after restarts; Readiness treats it as accepted. |
 | Phone Restart | On by default |
 | Third-party services | None. Strictly local, except Apple push for phone alerts. |
@@ -381,16 +381,16 @@ Swift throughout: one Core library shared by CLI, agent and app; SwiftUI for the
 
 ```text
 Sources/
-├── UpliftCore/
+├── TenderCore/
 │   ├── Config/       # schema, loading, validation, command resolution
 │   ├── Launchd/      # plist generation, launchctl
 │   ├── Reconciler/   # plan/apply, dependency order
-│   ├── Runner/       # `uplift run`: the wrapper launchd starts
+│   ├── Runner/       # `tender run`: the wrapper launchd starts
 │   ├── Logs/         # rotation, tail
 │   ├── Status/       # event log, crash loops, likely cause
 │   └── Health/       # one-shot TCP/HTTP checks
-└── uplift/           # the CLI
-# Later: Agent/ (uplift-agent), App/ (menu bar + window), Readiness/, Alerts/
+└── tender/           # the CLI
+# Later: Agent/ (tender-agent), App/ (menu bar + window), Readiness/, Alerts/
 ```
 
 ---
@@ -412,7 +412,7 @@ The workflow feels boring:
 5. Apps restart after crashes, and a crash loop is named, explained and alerted.
 6. A glance at the menu bar, or your phone, confirms everything is okay.
 7. When something breaks, you hear about it without looking.
-8. Configuration changes are a YAML edit plus `uplift apply`.
+8. Configuration changes are a YAML edit plus `tender apply`.
 9. You rarely need to open Terminal to babysit anything.
 
 ---

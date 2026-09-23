@@ -16,7 +16,7 @@ public enum HealthResult: Equatable, Sendable {
     }
 }
 
-/// One-shot health checks. Continuous checking belongs to uplift-agent (Phase 3); `status` and dependency waits use these.
+/// One-shot health checks. Continuous checking belongs to tender-agent (Phase 3); `status` and dependency waits use these.
 public enum HealthProbe {
     public static func check(_ config: HealthCheckConfig) async -> HealthResult {
         switch config.type {

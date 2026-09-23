@@ -2,25 +2,25 @@
 import PackageDescription
 
 let package = Package(
-    name: "Uplift",
+    name: "Tender",
     platforms: [.macOS(.v14)],
     products: [
-        .executable(name: "uplift", targets: ["uplift"]),
-        .library(name: "UpliftCore", targets: ["UpliftCore"]),
+        .executable(name: "tender", targets: ["tender"]),
+        .library(name: "TenderCore", targets: ["TenderCore"]),
     ],
     dependencies: [
         .package(url: "https://github.com/jpsim/Yams.git", from: "5.1.0"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
     ],
     targets: [
-        .target(name: "UpliftCore", dependencies: ["Yams"]),
+        .target(name: "TenderCore", dependencies: ["Yams"]),
         .executableTarget(
-            name: "uplift",
+            name: "tender",
             dependencies: [
-                "UpliftCore",
+                "TenderCore",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
         ),
-        .testTarget(name: "UpliftCoreTests", dependencies: ["UpliftCore"]),
+        .testTarget(name: "TenderCoreTests", dependencies: ["TenderCore"]),
     ]
 )

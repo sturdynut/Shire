@@ -1,7 +1,7 @@
 import Foundation
 
 /// The whole of `config.yaml`, with defaults filled in.
-public struct UpliftConfig: Equatable, Sendable {
+public struct TenderConfig: Equatable, Sendable {
     public var serverMode: ServerMode
     public var presets: Presets
     public var remote: RemoteSettings
@@ -25,7 +25,7 @@ public struct UpliftConfig: Equatable, Sendable {
         self.services = services
     }
 
-    /// Services that Uplift generates LaunchAgents for.
+    /// Services that Tender generates LaunchAgents for.
     public var managedServiceNames: [String] {
         services.filter { !$0.value.isExternal }.keys.sorted()
     }
@@ -159,7 +159,7 @@ public struct ServiceConfig: Equatable, Sendable, Decodable {
     public var dependsOn: [String]
     public var health: HealthCheckConfig?
     public var serve: Int?
-    /// Label of an existing launchd job that Uplift watches but doesn't manage.
+    /// Label of an existing launchd job that Tender watches but doesn't manage.
     public var external: String?
 
     public var isExternal: Bool { external != nil }

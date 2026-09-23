@@ -6,18 +6,18 @@ public struct AgentInputs {
     public var service: ServiceConfig
     public var resolvedCommand: String
     public var servicePath: String
-    public var upliftExecutable: String
-    public var paths: UpliftPaths
+    public var tenderExecutable: String
+    public var paths: TenderPaths
     public var logs: LogSettings
     public var dependencyWaits: [HostPort]
 
     public init(name: String, service: ServiceConfig, resolvedCommand: String, servicePath: String,
-                upliftExecutable: String, paths: UpliftPaths, logs: LogSettings, dependencyWaits: [HostPort]) {
+                tenderExecutable: String, paths: TenderPaths, logs: LogSettings, dependencyWaits: [HostPort]) {
         self.name = name
         self.service = service
         self.resolvedCommand = resolvedCommand
         self.servicePath = servicePath
-        self.upliftExecutable = upliftExecutable
+        self.tenderExecutable = tenderExecutable
         self.paths = paths
         self.logs = logs
         self.dependencyWaits = dependencyWaits
@@ -25,7 +25,7 @@ public struct AgentInputs {
 }
 
 public enum LaunchAgentBuilder {
-    public static let labelPrefix = "com.uplift."
+    public static let labelPrefix = "com.tender."
 
     public static func label(for service: String) -> String { labelPrefix + service }
 
@@ -33,14 +33,14 @@ public enum LaunchAgentBuilder {
         label.hasPrefix(labelPrefix) ? String(label.dropFirst(labelPrefix.count)) : nil
     }
 
-    /// The plist launchd runs. It always starts `uplift run`, which owns logging, env files and dependency waits,
+    /// The plist launchd runs. It always starts `tender run`, which owns logging, env files and dependency waits,
     /// then runs the real command. Secrets from `envFile` are read at start time and never written here.
     public static func plist(_ inputs: AgentInputs) -> [String: Any] {
         let home = inputs.paths.home.path
         let cwd = inputs.service.cwd.map { PathExpander.expand($0, home: home) }
 
         var runArguments = [
-            inputs.upliftExecutable, "run", inputs.name,
+            inputs.tenderExecutable, "run", inputs.name,
             "--log-dir", inputs.paths.logsDir.path,
             "--max-log-size", String(inputs.logs.maxSize.bytes),
             "--keep-logs", String(inputs.logs.keep),
@@ -56,7 +56,7 @@ public enum LaunchAgentBuilder {
 
         var environment = inputs.service.env
         environment["PATH"] = inputs.servicePath
-        environment["UPLIFT_SERVICE"] = inputs.name
+        environment["TENDER_SERVICE"] = inputs.name
 
         var plist: [String: Any] = [
             "Label": label(for: inputs.name),
@@ -125,7 +125,7 @@ public enum LaunchAgentBuilder {
         var reasons: [String] = []
         if a.command != b.command { reasons.append("command now \(b.command ?? "missing")") }
         if a.rest != b.rest { reasons.append("arguments changed") }
-        if a.head.first != b.head.first { reasons.append("uplift moved to \(b.head.first ?? "?")") }
+        if a.head.first != b.head.first { reasons.append("tender moved to \(b.head.first ?? "?")") }
         if Array(a.head.dropFirst()) != Array(b.head.dropFirst()) { reasons.append("run options changed") }
         return reasons
     }

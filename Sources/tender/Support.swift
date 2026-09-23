@@ -1,19 +1,19 @@
 import ArgumentParser
 import Foundation
-import UpliftCore
+import TenderCore
 
 struct ConfigOption: ParsableArguments {
-    @Option(name: .long, help: "Config file (default: ~/.config/uplift/config.yaml, or $UPLIFT_CONFIG).")
+    @Option(name: .long, help: "Config file (default: ~/.config/tender/config.yaml, or $TENDER_CONFIG).")
     var config: String?
 
-    var paths: UpliftPaths { UpliftPaths.current(configOverride: config) }
+    var paths: TenderPaths { TenderPaths.current(configOverride: config) }
 
-    func load() throws -> (UpliftPaths, UpliftConfig) {
+    func load() throws -> (TenderPaths, TenderConfig) {
         let paths = self.paths
         do {
             return (paths, try ConfigLoader.load(from: paths.configFile))
         } catch let error as ConfigError {
-            throw UpliftError(error.description)
+            throw TenderError(error.description)
         }
     }
 }
@@ -47,24 +47,24 @@ enum Terminal {
     }
 }
 
-/// The path launchd should run for `uplift run`: this binary, with symlinks resolved.
+/// The path launchd should run for `tender run`: this binary, with symlinks resolved.
 func currentExecutablePath() -> String {
     let url = Bundle.main.executableURL ?? URL(fileURLWithPath: CommandLine.arguments[0])
     return url.resolvingSymlinksInPath().path
 }
 
 /// Resolves every managed command through the login shell and fails with a readable message if that's impossible.
-func resolveCommands(_ config: UpliftConfig) throws -> ResolvedEnvironment {
+func resolveCommands(_ config: TenderConfig) throws -> ResolvedEnvironment {
     let commands = config.services.values.compactMap { $0.isExternal ? nil : $0.command }
     do {
         return try CommandResolver().resolve(commands)
     } catch {
-        throw UpliftError(String(describing: error))
+        throw TenderError(String(describing: error))
     }
 }
 
 /// A failure explained in plain words. ArgumentParser prints it after “Error:” and exits with status 1.
-struct UpliftError: Error, CustomStringConvertible {
+struct TenderError: Error, CustomStringConvertible {
     var description: String
 
     init(_ description: String) {
