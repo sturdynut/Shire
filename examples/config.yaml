@@ -36,9 +36,9 @@ services:
     dependsOn: [bagend-api]
     health: { type: http, url: http://localhost:5174 }
 
-  # Keeps TradingView Desktop open with its debug port so the TradingView MCP works.
-  tradingview:
-    command: /Applications/TradingView.app/Contents/MacOS/TradingView
+  # Red Book, a desktop app kept open with its debug port. If you opened it yourself, Shire watches that copy.
+  redbook:
+    command: /Applications/RedBook.app/Contents/MacOS/RedBook
     args: [--remote-debugging-port=9222]
     adoptRunning: true
     health: { type: tcp, port: 9222 }

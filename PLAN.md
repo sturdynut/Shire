@@ -21,18 +21,16 @@ UI designs (light and dark, Mac and phone): https://claude.ai/artifact/NB48q5ZLn
 | `bagend-api` | Bag End API (`~/Code/bagend/server`), port 3001 | managed, built with `pnpm build`, run with `node dist/index.js` |
 | `bagend-web` | Bag End web app (`~/Code/bagend/web`), port 5174 | managed, built with `pnpm build`, served with `pnpm preview`, shared on the tailnet |
 | `postgres` | Homebrew `postgresql@16` | **external**: watched, not managed (`brew services` owns it) |
-| `tradingview` | TradingView Desktop with `--remote-debugging-port=9222` | managed GUI app, so the TradingView MCP works whenever Claude Code starts it |
+| `redbook` | Red Book, a desktop app kept open with `--remote-debugging-port=9222` | managed GUI app; if it's already open, Shire watches that copy |
 
 **Bag End on this Mac is a staging copy with sample data.** It uses its own local database (`.env.staging`), never production's. Production runs elsewhere.
-
-**The TradingView MCP itself is not a service.** It uses stdio, so Claude Code launches it per session. What Shire keeps running is TradingView Desktop with the debug port open.
 
 ---
 
 ## Primary use cases
 
 - Keep a staging copy of a web app (Bag End) running and reachable from your phone
-- Keep TradingView Desktop open with its debug port for the MCP
+- Keep a desktop app (Red Book) open with its debug port, without launching a second copy
 - Watch services Shire doesn't own (Postgres via `brew services`)
 - Ensure Tailscale is available
 - Keep the Mac awake while server mode is enabled
@@ -133,8 +131,8 @@ services:
     dependsOn: [bagend-api]
     health: { type: http, url: http://localhost:5174 }
 
-  tradingview:
-    command: /Applications/TradingView.app/Contents/MacOS/TradingView
+  redbook:
+    command: /Applications/RedBook.app/Contents/MacOS/RedBook
     args: [--remote-debugging-port=9222]
     health: { type: tcp, port: 9222 }
 ```
@@ -157,21 +155,21 @@ launchd starts services with `PATH=/usr/bin:/bin:/usr/sbin:/sbin` and does not e
 - On every `apply`, resolve each command to an absolute path using the login shell, and expand `~`.
 - Show resolved paths in validation (`pnpm → ~/.nvm/versions/node/v22.20.0/bin/pnpm`), and warn when a command comes from a version manager.
 - Each plist runs a small wrapper, `shire run <service>`, rather than the raw command. The wrapper waits for dependencies, loads `envFile` (secrets never go into the plist), runs the real command with its output captured into rotating logs, records starts and exits for crash-loop detection, and writes clear log lines (`shire: no such file: …/v22.14.0/bin/pnpm`).
-- A service's PATH is its command's folder, then any PATH the config sets, then Homebrew and the system. Not the whole login PATH: that changes on every nvm switch and would restart unrelated services (TradingView) for nothing.
+- A service's PATH is its command's folder, then any PATH the config sets, then Homebrew and the system. Not the whole login PATH: that changes on every nvm switch and would restart unrelated services (Red Book) for nothing.
 - `build:` runs on `apply` for new or changed services and on `shire restart`, never on launchd's automatic respawns, so a crash loop doesn't rebuild every 10 seconds. A failed build leaves the running version alone.
 
 ### Applying changes
 
 - Compare the generated plist with the installed one; reload only services that changed. `apply` never restarts everything.
 - Use `launchctl bootstrap` / `bootout`, not the deprecated `load` / `unload`.
-- Show what will happen before applying ("Apply starts tradingview, restarts bagend-web").
+- Show what will happen before applying ("Apply starts redbook, restarts bagend-web").
 - Respect `dependsOn` for start order (postgres → api → web).
 
 ## Service kinds
 
 - **Managed** (default): Shire generates the LaunchAgent (`com.shire.<service>`) and owns start/stop/restart.
 - **External**: an existing launchd job Shire doesn't own, such as `homebrew.mxcl.postgresql@16`. Shire only watches its state and health, and can depend on it. It never edits or unloads it.
-- **GUI app**: a managed service whose command is an app bundle's binary (TradingView). If the app is already open without the right flags, the relaunch just activates the existing window. Shire detects that (debug port closed while the app runs) and explains it.
+- **GUI app**: a managed service whose command is an app bundle's binary (Red Book). If the app is already open without the right flags, the relaunch just activates the existing window. Shire detects that (debug port closed while the app runs) and explains it.
 
 ## launchd
 
@@ -258,7 +256,7 @@ A fixed list of known patterns, each with a plain explanation and a fix:
 | permission denied | file or folder not accessible | show the path |
 | missing `cwd` | working folder doesn't exist | edit config |
 | dependency down | e.g. postgres not reachable | point at the dependency |
-| app running, debug port closed | TradingView opened without the flag | quit it once; Shire relaunches it with the flag |
+| app running, debug port closed | Red Book opened without the flag | quit it once; Shire relaunches it with the flag |
 | crash-loop right after apply | the last config change broke it | show the diff, offer revert |
 
 No generic diagnosis engine.
@@ -283,7 +281,7 @@ NAME              PROCESS        HEALTH
 postgres          external       healthy
 bagend-api        running        healthy
 bagend-web        crash-looping  exit 127 (pnpm path moved: nvm)
-tradingview       running        port 9222 open
+redbook           running        port 9222 open
 tailscale         running        connected
 keep-awake        active         on power
 
@@ -322,7 +320,7 @@ Light and dark follow macOS.
 - start/stop/restart, `status`, crash-loop detection
 - env, `envFile`, `build:` step, stdout/stderr logs with rotation
 
-**Done when** `shire apply` brings up postgres (watched), the Bag End staging copy and TradingView with its debug port, and a moved nvm path shows as "crash-looping, exit 127, pnpm path moved" rather than silent failure.
+**Done when** `shire apply` brings up postgres (watched), the Bag End staging copy and Red Book with its debug port, and a moved nvm path shows as "crash-looping, exit 127, pnpm path moved" rather than silent failure.
 
 ## Phase 2 — Server mode and readiness ✅
 
@@ -357,7 +355,7 @@ Service page, config.yaml with live checks, Readiness, Alerts. Light and dark.
 | Phone Restart | On by default |
 | Third-party services | None. Strictly local, except Apple push for phone alerts. |
 | Bag End | A staging copy with sample data runs here; production runs elsewhere |
-| TradingView | Keep TradingView Desktop running with debug port 9222; the MCP stays stdio |
+| Desktop apps | Red Book is kept open with its debug port; a copy you opened yourself is watched, not duplicated |
 | Minimum macOS | **14 Sonoma**: MenuBarExtra, Observation and SMAppService are all available. (This Mac runs 26.) |
 
 # Cut from v1
@@ -399,7 +397,7 @@ Sources/
 
 # First dogfooding setup
 
-Start with the config above: postgres (external), the Bag End staging copy, and TradingView. Run it continuously for at least a week. Track what fails, what needs Terminal, what state is confusing, what information you keep wanting, and what actions you keep repeating. Those pain points drive the next features, including whether anything in "Cut from v1" comes back.
+Start with the config above: postgres (external), the Bag End staging copy, and Red Book. Run it continuously for at least a week. Track what fails, what needs Terminal, what state is confusing, what information you keep wanting, and what actions you keep repeating. Those pain points drive the next features, including whether anything in "Cut from v1" comes back.
 
 ---
 

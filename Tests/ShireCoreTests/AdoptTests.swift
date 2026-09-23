@@ -39,13 +39,13 @@ final class TestListener {
 @Suite("Adopting a running copy", .serialized)
 struct AdoptTests {
     func options(_ home: TempHome, _ command: String, _ args: [String], adopt: HostPort) -> RunnerOptions {
-        RunnerOptions(name: "tradingview", logDir: home.url.appending(path: "logs"), maxLogSize: 1 << 20, keepLogs: 1,
+        RunnerOptions(name: "redbook", logDir: home.url.appending(path: "logs"), maxLogSize: 1 << 20, keepLogs: 1,
                       eventsFile: nil, envFile: nil, waitFor: [], adopt: adopt, adoptPollInterval: 0.2,
                       command: command, arguments: args)
     }
 
     func log(_ home: TempHome, _ stream: String) throws -> String {
-        try String(contentsOf: home.url.appending(path: "logs/tradingview.\(stream).log"), encoding: .utf8)
+        try String(contentsOf: home.url.appending(path: "logs/redbook.\(stream).log"), encoding: .utf8)
     }
 
     @Test func watchesTheOpenCopyThenStartsItsOwnWhenItGoesAway() throws {
@@ -75,25 +75,25 @@ struct AdoptTests {
     @Test func likelyCauseForAHandOff() throws {
         let home = try TempHome()
         let inspector = StatusInspector(paths: home.paths, launchControl: FakeLaunchControl(), crashLoop: .default)
-        let cause = inspector.likelyCause(name: "tradingview", service: ServiceConfig(command: "/x"),
+        let cause = inspector.likelyCause(name: "redbook", service: ServiceConfig(command: "/x"),
                                           state: .crashLooping(lastExit: 69, exits: 3, window: DurationValue(seconds: 300)), dependencyHealth: [:])
-        #expect(cause?.hasPrefix("tradingview is already open without the options Shire starts it with") == true)
+        #expect(cause?.hasPrefix("redbook is already open without the options Shire starts it with") == true)
     }
 
     @Test func plistAndValidation() throws {
         let config = try ConfigLoader.parse("""
         services:
-          tradingview:
-            command: /Applications/TradingView.app/Contents/MacOS/TradingView
+          redbook:
+            command: /Applications/RedBook.app/Contents/MacOS/RedBook
             args: [--remote-debugging-port=9222]
             adoptRunning: true
             health: { type: tcp, port: 9222 }
           bad: { command: /bin/echo, adoptRunning: true }
         """)
-        let path = "/Applications/TradingView.app/Contents/MacOS/TradingView"
+        let path = "/Applications/RedBook.app/Contents/MacOS/RedBook"
         let resolved = ResolvedEnvironment(commands: [path: CommandResolution(command: path, path: path), "/bin/echo": CommandResolution(command: "/bin/echo", path: "/bin/echo")], loginPath: "")
         let plist = Reconciler(paths: TestPaths.home, launchControl: FakeLaunchControl())
-            .desiredPlists(config: config, resolved: resolved, shireExecutable: "/u")["tradingview"]!
+            .desiredPlists(config: config, resolved: resolved, shireExecutable: "/u")["redbook"]!
         let args = try #require(plist["ProgramArguments"] as? [String])
         #expect(args[args.firstIndex(of: "--adopt")! + 1] == "127.0.0.1:9222")
 

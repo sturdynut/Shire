@@ -170,7 +170,7 @@ public struct ServiceConfig: Equatable, Sendable, Decodable {
     /// Label of an existing launchd job that Shire watches but doesn't manage.
     public var external: String?
     /// When something already answers the health check at start (an app you opened yourself), watch it instead of
-    /// starting a second copy. Meant for single-instance GUI apps like TradingView.
+    /// starting a second copy. Meant for single-instance GUI apps (Electron apps and the like).
     public var adoptRunning: Bool
 
     public var isExternal: Bool { external != nil }

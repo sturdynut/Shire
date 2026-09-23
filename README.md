@@ -16,7 +16,7 @@ breaks (on the Mac and on your phone), and explains the likely cause in plain wo
 $ shire status
 NAME          PROCESS         HEALTH
 postgres      external        healthy · port 5432 open · 1 ms
-tradingview   running         healthy · port 9222 open · 0 ms
+redbook       running         healthy · port 9222 open · 0 ms
 bagend-api    running         healthy · HTTP 200 · 22 ms
 bagend-web    crash-looping   unhealthy · connection refused · for 3m
               exit 127, 14 failures in 5m
@@ -104,8 +104,8 @@ services:
     restart: always               # always | on-failure | never
     health: { type: http, url: http://localhost:3001/health, interval: 30s, timeout: 3s }
 
-  tradingview:
-    command: /Applications/TradingView.app/Contents/MacOS/TradingView
+  redbook:
+    command: /Applications/RedBook.app/Contents/MacOS/RedBook
     args: [--remote-debugging-port=9222]
     adoptRunning: true            # if you already opened it, watch that copy instead of launching another
     health: { type: tcp, port: 9222 }

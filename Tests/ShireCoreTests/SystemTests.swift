@@ -287,7 +287,7 @@ struct AgentInstallTests {
         _ = reconciler.apply(reconciler.plan(config: config, desired: desired, agentPlist: agent), config: config, resolved: planResolution(), build: true)
 
         let removed = reconciler.uninstall().map(\.name)
-        #expect(Set(removed) == ["bagend-api", "bagend-web", "tradingview", "shire-agent"])
+        #expect(Set(removed) == ["bagend-api", "bagend-web", "redbook", "shire-agent"])
         #expect(reconciler.installedServices().isEmpty)
         #expect(!control.isLoaded(LaunchAgentBuilder.agentLabel))
         #expect(reconciler.uninstall().isEmpty)

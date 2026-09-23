@@ -133,8 +133,8 @@ services:
     dependsOn: [bagend-api]
     health: { type: http, url: http://localhost:5174 }
 
-  tradingview:
-    command: /Applications/TradingView.app/Contents/MacOS/TradingView
+  redbook:
+    command: /Applications/RedBook.app/Contents/MacOS/RedBook
     args: [--remote-debugging-port=9222]
     health: { type: tcp, port: 9222 }
 """
@@ -146,9 +146,9 @@ func planResolution() -> ResolvedEnvironment {
         commands: [
             "node": CommandResolution(command: "node", path: "\(nvm22_14)/node"),
             "pnpm": CommandResolution(command: "pnpm", path: "\(nvm22_14)/pnpm"),
-            "/Applications/TradingView.app/Contents/MacOS/TradingView": CommandResolution(
-                command: "/Applications/TradingView.app/Contents/MacOS/TradingView",
-                path: "/Applications/TradingView.app/Contents/MacOS/TradingView"),
+            "/Applications/RedBook.app/Contents/MacOS/RedBook": CommandResolution(
+                command: "/Applications/RedBook.app/Contents/MacOS/RedBook",
+                path: "/Applications/RedBook.app/Contents/MacOS/RedBook"),
         ],
         loginPath: "\(nvm22_14):/opt/homebrew/bin:/usr/bin:/bin"
     )

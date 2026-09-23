@@ -92,7 +92,7 @@ struct LaunchAgentBuilderTests {
         let config = try ConfigLoader.parse(planConfigYAML)
         let reconciler = Reconciler(paths: ShirePaths(home: URL(fileURLWithPath: "/Users/me")), launchControl: FakeLaunchControl())
         let all = reconciler.desiredPlists(config: config, resolved: planResolution(), shireExecutable: "/u")
-        #expect(Set(all.keys) == ["bagend-api", "bagend-web", "tradingview"])
+        #expect(Set(all.keys) == ["bagend-api", "bagend-web", "redbook"])
     }
 
     @Test func restartPolicies() throws {

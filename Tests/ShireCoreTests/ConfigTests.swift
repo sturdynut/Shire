@@ -62,7 +62,7 @@ struct ConfigLoaderTests {
         #expect(postgres.isExternal)
         #expect(postgres.health?.endpoint == HostPort(host: "127.0.0.1", port: 5432))
 
-        #expect(config.managedServiceNames == ["bagend-api", "bagend-web", "tradingview"])
+        #expect(config.managedServiceNames == ["bagend-api", "bagend-web", "redbook"])
     }
 
     @Test func defaultsWhenSectionsAreMissing() throws {

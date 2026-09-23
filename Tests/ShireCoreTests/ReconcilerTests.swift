@@ -22,14 +22,14 @@ struct ReconcilerTests {
         #expect(actions(plan)["postgres"] == .watch(label: "homebrew.mxcl.postgresql@16"))
         #expect(actions(plan)["bagend-api"] == .install)
         #expect(actions(plan)["bagend-web"] == .install)
-        #expect(actions(plan)["tradingview"] == .install)
+        #expect(actions(plan)["redbook"] == .install)
 
         let outcomes = reconciler.apply(plan, config: config, resolved: planResolution(), build: true)
         #expect(outcomes.allSatisfy { if case .done = $0.result { return true } else { return false } })
         // Services with no dependencies go first; the API waits on postgres, the web app on the API.
-        #expect(control.calls == ["bootstrap com.shire.tradingview", "bootstrap com.shire.bagend-api", "bootstrap com.shire.bagend-web"])
+        #expect(control.calls == ["bootstrap com.shire.redbook", "bootstrap com.shire.bagend-api", "bootstrap com.shire.bagend-web"])
         #expect(builder.log.all == ["bagend-api: pnpm build", "bagend-web: pnpm build"])
-        #expect(FileManager.default.fileExists(atPath: home.paths.plist(forLabel: "com.shire.tradingview").path))
+        #expect(FileManager.default.fileExists(atPath: home.paths.plist(forLabel: "com.shire.redbook").path))
     }
 
     @Test func secondApplyChangesNothing() throws {
@@ -62,8 +62,8 @@ struct ReconcilerTests {
         }
         #expect(reasons.contains("command now \(nvm22_20)/pnpm"))
         if case .update = actions(plan)["bagend-api"] {} else { Issue.record("api should restart") }
-        // TradingView doesn't use Node, so switching Node versions must not restart it.
-        #expect(actions(plan)["tradingview"] == .unchanged)
+        // Red Book doesn't use Node, so switching Node versions must not restart it.
+        #expect(actions(plan)["redbook"] == .unchanged)
     }
 
     @Test func failedBuildLeavesTheRunningVersionAlone() throws {
@@ -75,7 +75,7 @@ struct ReconcilerTests {
         let api = try #require(outcomes.first { $0.name == "bagend-api" })
         #expect(api.result == .failed("build failed (pnpm build); left the running version alone"))
         #expect(!control.calls.contains("bootstrap com.shire.bagend-api"))
-        #expect(control.calls.contains("bootstrap com.shire.tradingview"))
+        #expect(control.calls.contains("bootstrap com.shire.redbook"))
     }
 
     @Test func noBuildSkipsBuilds() throws {
@@ -95,14 +95,14 @@ struct ReconcilerTests {
         _ = reconciler.apply(reconciler.plan(config: config, desired: desired), config: config, resolved: planResolution(), build: true)
 
         var smaller = config
-        smaller.services["tradingview"] = nil
+        smaller.services["redbook"] = nil
         let plan = reconciler.plan(config: smaller, desired: reconciler.desiredPlists(config: smaller, resolved: planResolution(), shireExecutable: "/u"))
-        #expect(actions(plan)["tradingview"] == .remove)
-        #expect(plan.changes.first?.name == "tradingview")
+        #expect(actions(plan)["redbook"] == .remove)
+        #expect(plan.changes.first?.name == "redbook")
 
         _ = reconciler.apply(plan, config: smaller, resolved: planResolution(), build: true)
-        #expect(control.calls.last == "bootout com.shire.tradingview")
-        #expect(!FileManager.default.fileExists(atPath: home.paths.plist(forLabel: "com.shire.tradingview").path))
+        #expect(control.calls.last == "bootout com.shire.redbook")
+        #expect(!FileManager.default.fileExists(atPath: home.paths.plist(forLabel: "com.shire.redbook").path))
     }
 
     @Test func unrelatedLaunchAgentsAreIgnored() throws {
