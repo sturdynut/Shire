@@ -141,7 +141,13 @@ public struct Reconciler: Sendable {
         let installed = Set(installedServices())
 
         if let agentPlist {
-            changes.append(change(name: PlannedChange.agentName, label: LaunchAgentBuilder.agentLabel, desired: agentPlist))
+            var agent = change(name: PlannedChange.agentName, label: LaunchAgentBuilder.agentLabel, desired: agentPlist)
+            let executable = (agentPlist["ProgramArguments"] as? [String])?.first ?? ""
+            if agent.action == .unchanged,
+               Self.agentIsOutdated(agentStartedAt: AgentState.read(from: paths.agentStateFile)?.startedAt, executable: executable) {
+                agent.action = .update(reasons: ["tender was updated"])
+            }
+            changes.append(agent)
         }
 
         for name in installed.subtracting(config.managedServiceNames).sorted() {
@@ -158,6 +164,14 @@ public struct Reconciler: Sendable {
             changes.append(change(name: name, label: LaunchAgentBuilder.label(for: name), desired: plist))
         }
         return ApplyPlan(changes: changes)
+    }
+
+    /// True when the tender binary was replaced after the running agent started, so the agent runs old code.
+    public static func agentIsOutdated(agentStartedAt: Date?, executable: String) -> Bool {
+        guard let started = agentStartedAt,
+              let modified = (try? FileManager.default.attributesOfItem(atPath: executable))?[.modificationDate] as? Date
+        else { return false }
+        return modified > started
     }
 
     private func change(name: String, label: String, desired plist: [String: Any]) -> PlannedChange {

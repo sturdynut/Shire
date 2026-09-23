@@ -24,7 +24,8 @@ struct HealthMonitorTests {
         let down = monitor.runDueChecks(config: config, now: t0.addingTimeInterval(30))["web"]!
         #expect(!down.healthy)
         #expect(down.since == t0.addingTimeInterval(30))
-        let still = monitor.runDueChecks(config: config, now: t0.addingTimeInterval(60))["web"]!
+        let still = monitor.runDueChecks(config: config, now: t0.addingTimeInterval(35))["web"]!
+        #expect(still.lastChecked == t0.addingTimeInterval(35)) // failing: rechecked after 5s, not 30s
         #expect(still.since == t0.addingTimeInterval(30)) // unhealthy since the first failure
         #expect(still.consecutiveFailures == 2)
         #expect(monitor.states["quiet"] == nil)

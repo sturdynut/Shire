@@ -56,8 +56,10 @@ struct Apply: ParsableCommand {
         if dryRun { return }
 
         print("")
+        fflush(stdout)
         let outcomes = reconciler.apply(plan, config: config, resolved: resolved, build: !noBuild) { message in
             print(Terminal.dim(message))
+            fflush(stdout) // before the build's own output, which goes straight to the terminal
         }
         var failed = false
         for outcome in outcomes {

@@ -30,6 +30,10 @@ public final class HealthMonitor {
     public private(set) var states: [String: ServiceHealth]
     private let probe: Probe
 
+    /// A failing service is rechecked this often (or at its own interval, if shorter), so recovery shows up within
+    /// seconds instead of waiting out a long healthy-interval.
+    public static let failingRecheck: TimeInterval = 5
+
     public init(states: [String: ServiceHealth] = [:], probe: @escaping Probe = HealthProbe.checkBlocking) {
         self.states = states
         self.probe = probe
@@ -43,7 +47,10 @@ public final class HealthMonitor {
 
         let due = config.services.compactMap { name, service -> (String, HealthCheckConfig)? in
             guard let check = service.health else { return nil }
-            if let last = states[name]?.lastChecked, now.timeIntervalSince(last) < check.interval.seconds { return nil }
+            if let state = states[name] {
+                let every = state.healthy ? check.interval.seconds : min(check.interval.seconds, Self.failingRecheck)
+                if now.timeIntervalSince(state.lastChecked) < every { return nil }
+            }
             return (name, check)
         }
         guard !due.isEmpty else { return states }

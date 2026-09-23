@@ -293,6 +293,16 @@ struct AgentInstallTests {
         #expect(reconciler.uninstall().isEmpty)
     }
 
+    @Test func agentRestartsAfterTenderIsUpdated() throws {
+        let home = try TempHome()
+        let binary = try home.write("bin/tender", "v1")
+        let now = Date()
+        try FileManager.default.setAttributes([.modificationDate: now], ofItemAtPath: binary.path)
+        #expect(Reconciler.agentIsOutdated(agentStartedAt: now.addingTimeInterval(-60), executable: binary.path))
+        #expect(!Reconciler.agentIsOutdated(agentStartedAt: now.addingTimeInterval(60), executable: binary.path))
+        #expect(!Reconciler.agentIsOutdated(agentStartedAt: nil, executable: binary.path))
+    }
+
     @Test func agentNameIsReserved() throws {
         let issues = Validator(home: "/Users/me", directoryExists: { _ in true }, fileExists: { _ in true })
             .validate(try ConfigLoader.parse("services:\n  agent: { command: /bin/echo }\n"))
