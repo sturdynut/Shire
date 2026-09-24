@@ -29,6 +29,10 @@ final class ShireModel {
     var selection: SidebarItem? = .readiness
     var busy: Set<String> = []
     var lastOutcome: CommandOutcome?
+    /// Shows the "Add service…" sheet in the main window.
+    var addingService = false
+    /// Bumped when the app writes config.yaml, so an open editor reloads it.
+    var configRevision = 0
     @ObservationIgnored var showWindow: (() -> Void)?
 
     @ObservationIgnored private var facts: SystemFacts?
@@ -105,6 +109,11 @@ final class ShireModel {
     func stop(_ name: String) { runShire(["stop", name], title: "Stop \(name)", key: name) }
     func start(_ name: String) { runShire(["start", name], title: "Start \(name)", key: name) }
     func apply() { runShire(["apply"], title: "Apply changes", key: "apply") }
+
+    func addService() {
+        addingService = true
+        showWindow?()
+    }
 
     func openConfig() {
         NSWorkspace.shared.open(paths.configFile)

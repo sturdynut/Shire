@@ -38,6 +38,8 @@ app: .build/AppIcon.icns
 install-app: app
 	mkdir -p "$(APPDIR)"
 	-osascript -e 'tell application id "com.shire.app" to quit' 2>/dev/null
+	@# Wait for the old copy to exit before replacing it (removing or reopening it mid-quit fails).
+	@for i in $$(seq 1 50); do pgrep -f "Shire.app/Contents/MacOS/Shire" >/dev/null || break; sleep 0.1; done
 	rm -rf "$(APPDIR)/Shire.app"
 	cp -R $(BUNDLE) "$(APPDIR)/Shire.app"
 	open "$(APPDIR)/Shire.app"

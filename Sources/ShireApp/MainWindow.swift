@@ -23,13 +23,22 @@ struct MainWindow: View {
                     .tag(SidebarItem.readiness)
                     Label("Alerts", systemImage: "bell").tag(SidebarItem.alerts)
                 }
-                Section("Services") {
+                Section {
                     ForEach(model.snapshot?.services ?? []) { service in
                         HStack(spacing: 8) {
                             StatusDot(color: service.tone.color)
                             Text(service.name)
                         }
                         .tag(SidebarItem.service(service.name))
+                    }
+                } header: {
+                    HStack {
+                        Text("Services")
+                        Spacer()
+                        Button { model.addingService = true } label: { Image(systemName: "plus") }
+                            .buttonStyle(.borderless)
+                            .help("Add service…")
+                            .accessibilityLabel("Add service")
                     }
                 }
                 Section("Configuration") {
@@ -56,6 +65,7 @@ struct MainWindow: View {
             }
             .frame(minWidth: 640, minHeight: 520)
         }
+        .sheet(isPresented: $model.addingService) { AddServiceSheet(model: model) }
     }
 
     private var menuColor: Color {

@@ -175,6 +175,9 @@ config.yaml ─► shire apply ─► ~/Library/LaunchAgents/com.shire.<service>
 shows each service, Tailscale and keep-awake; hovering a service offers Restart. The window has:
 
 - **Services:** process and health, likely cause, and live logs (both streams or one, follow, reveal in Finder).
+- **Add service…** (the + next to Services, or in the menu): a form for a command or an app, working folder, health
+  check, restart policy and what it starts after. It checks as you type, shows the exact YAML, and adds it to the
+  end of `services:` without touching the rest of the file, so your comments survive. Add & Apply starts it.
 - **config.yaml:** edit in place with live schema checks, resolved commands and an "Apply will…" preview; Save & Apply.
 - **Readiness** and **Alerts**, including "Send test alert".
 

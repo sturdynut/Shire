@@ -101,6 +101,7 @@ struct MenuContent: View {
                 }
             }
             MenuButton(title: "Open Shire", shortcut: "⌘O") { model.showWindow?() }
+            MenuButton(title: "Add service…") { model.addService() }
             MenuButton(title: "Open config.yaml") {
                 model.selection = .config
                 model.showWindow?()

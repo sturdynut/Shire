@@ -30,6 +30,8 @@ struct ConfigEditor: View {
             }
         }
         .task { load() }
+        // A service added from the form changes the file; pick that up unless there are unsaved edits here.
+        .onChange(of: model.configRevision) { _, _ in if !dirty { load() } }
         .task(id: text) {
             try? await Task.sleep(for: .milliseconds(400))
             checkSchema()
@@ -44,6 +46,7 @@ struct ConfigEditor: View {
             }
             Spacer()
             if dirty { Text("Unsaved").font(.caption).foregroundStyle(.orange) }
+            Button("Add service…") { model.addingService = true }
             Button("Open in editor") { model.openConfig() }
             Button("Revert") { load() }.disabled(!dirty)
             Button("Save") { save() }.keyboardShortcut("s").disabled(!dirty || parseError != nil)
