@@ -214,6 +214,35 @@ struct AgentAlertTests {
         #expect(notifier.titles == ["Tailscale isn’t running"])
     }
 
+    @Test func aReadinessGlitchDoesNotCloseAndReAlert() throws {
+        let home = try TempHome()
+        try home.write(".config/shire/config.yaml", "services: {}\n")
+        let notifier = FakeNotifier()
+        let readable = LockedBox(true)
+        let agent = ShireAgent(paths: home.paths, power: FakePower(), powerSource: { PowerInfo(hasBattery: false, onACPower: true) },
+                               monitor: HealthMonitor(probe: { _ in .healthy(detail: "ok") }), notifier: notifier,
+                               facts: {
+                                   // The update setting is on; sometimes it can't be read (autoInstall nil), as when the Mac is struggling.
+                                   SystemFacts(fileVaultOn: true, autoInstallMacOSUpdates: readable.value ? true : nil)
+                               }, phoneServer: false)
+        let t0 = Date()
+        agent.tick(now: t0)
+        agent.tick(now: t0.addingTimeInterval(31))   // confirmed: one alert
+        #expect(notifier.titles == ["macOS installs updates and restarts on its own"])
+
+        readable.value = false
+        agent.tick(now: t0.addingTimeInterval(400))  // one failed read: incident stays open
+        readable.value = true
+        agent.tick(now: t0.addingTimeInterval(431))  // back: no second alert
+        agent.tick(now: t0.addingTimeInterval(800))
+        #expect(notifier.titles.count == 1)
+
+        readable.value = false
+        agent.tick(now: t0.addingTimeInterval(1200)) // gone…
+        agent.tick(now: t0.addingTimeInterval(1231)) // …and still gone: closes quietly
+        #expect(IncidentState.read(from: home.paths.incidentsFile).open.isEmpty)
+    }
+
     @Test func alertsOffStillLogsButDoesntNotify() throws {
         let home = try TempHome()
         try home.write(".config/shire/config.yaml", "alerts: { macos: false }\n")

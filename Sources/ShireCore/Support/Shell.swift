@@ -40,7 +40,15 @@ public struct SystemCommandRunner: CommandRunning {
 
         let finished = DispatchSemaphore(value: 0)
         process.terminationHandler = { _ in finished.signal() }
-        try process.run()
+        do {
+            try process.run()
+        } catch {
+            // Nothing was started, so all four ends are still ours to close.
+            for handle in [out.fileHandleForReading, out.fileHandleForWriting, err.fileHandleForReading, err.fileHandleForWriting] {
+                try? handle.close()
+            }
+            throw error
+        }
 
         // Drain both pipes concurrently so a chatty program can't fill one and deadlock.
         let collector = OutputCollector()
@@ -49,6 +57,9 @@ public struct SystemCommandRunner: CommandRunning {
             group.enter()
             DispatchQueue.global().async {
                 let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                // Foundation doesn't close a pipe's read end when the Pipe goes away; without this every run
+                // leaked two descriptors, and shire-agent eventually hit launchd's open-file limit.
+                try? pipe.fileHandleForReading.close()
                 collector.set(data, isOut: isOut)
                 group.leave()
             }

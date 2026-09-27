@@ -49,6 +49,8 @@ public enum LaunchAgentBuilder {
             "ThrottleInterval": 10,
             "LimitLoadToSessionType": "Aqua",
             "ProcessType": "Background",
+            // launchd's default soft limit is 256 open files, tight for a process that runs for months.
+            "SoftResourceLimits": ["NumberOfFiles": 4096],
             "StandardOutPath": paths.agentLog.path,
             "StandardErrorPath": paths.agentLog.path,
         ]

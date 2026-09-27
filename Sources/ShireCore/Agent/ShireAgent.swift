@@ -88,6 +88,8 @@ public final class ShireAgent {
     private var lastReadiness: Date?
     /// Readiness warnings seen once and waiting for a confirming recheck (a single failed `tailscale status` is noise).
     private var pendingReadiness: Set<String> = []
+    /// Open readiness incidents missing from one check, waiting for a recheck before they close.
+    private var pendingReadinessClose: Set<String> = []
     static let readinessConfirmAfter: TimeInterval = 30
     private var lastAlert: AlertMessage?
     /// The heartbeat left by the previous run, used for the "services were down" report.
@@ -179,7 +181,7 @@ public final class ShireAgent {
         }
 
         var warnings: [ReadinessCheck]?
-        let every = pendingReadiness.isEmpty ? readinessInterval : Self.readinessConfirmAfter
+        let every = pendingReadiness.isEmpty && pendingReadinessClose.isEmpty ? readinessInterval : Self.readinessConfirmAfter
         if lastReadiness == nil || now.timeIntervalSince(lastReadiness!) >= every {
             lastReadiness = now
             let gathered = facts()
@@ -189,7 +191,17 @@ public final class ShireAgent {
             // Alert on a warning only once it has been seen twice in a row (or is already an open incident).
             let confirmed = seen.filter { pendingReadiness.contains($0.id) || incidents.open["readiness:\($0.id)"] != nil }
             pendingReadiness = Set(seen.map(\.id)).subtracting(confirmed.map(\.id))
-            warnings = confirmed
+            // Likewise, close an open one only once it has been gone twice in a row: a check that fails to run
+            // (a busy Mac, a timed-out command) mustn't close the incident and then re-alert when it's seen again.
+            let seenIDs = Set(seen.map(\.id))
+            let openIDs = incidents.open.values.filter { $0.kind == .readiness }.map { String($0.key.dropFirst("readiness:".count)) }
+            let missing = Set(openIDs).subtracting(seenIDs)
+            let keep = missing.subtracting(pendingReadinessClose)
+            pendingReadinessClose = keep
+            let held = keep.compactMap { id in
+                incidents.open["readiness:\(id)"].map { ReadinessCheck(id, .warn, $0.title, "") }
+            }
+            warnings = confirmed + held
         }
 
         let (next, alerts) = IncidentEngine.evaluate(previous: incidents, services: observations, readinessWarnings: warnings, config: config, now: now)
