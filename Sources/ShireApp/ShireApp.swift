@@ -62,31 +62,14 @@ enum LoginItem {
     }
 }
 
-/// The menu bar icon: a server rack with a status dot, drawn at display time so it follows the menu bar's appearance.
+/// The menu bar icon: the Shire logo as a one-colour glyph with a status dot (see ShireGlyph).
 enum StatusIcon {
     static func image(for overall: ShireSnapshot.Overall) -> NSImage {
-        let dot: NSColor
         switch overall {
-        case .healthy: dot = .systemGreen
-        case .attention: dot = .systemOrange
-        case .notRunning: dot = .systemGray
+        case .healthy: return ShireGlyph.menuBarImage(dot: .systemGreen)
+        case .attention: return ShireGlyph.menuBarImage(dot: .systemOrange)
+        case .notRunning: return ShireGlyph.menuBarImage(dot: .systemGray)
         }
-        let size = NSSize(width: 22, height: 16)
-        let image = NSImage(size: size, flipped: false) { rect in
-            let config = NSImage.SymbolConfiguration(pointSize: 13, weight: .regular)
-            if let symbol = NSImage(systemSymbolName: "server.rack", accessibilityDescription: nil)?.withSymbolConfiguration(config) {
-                let symbolRect = NSRect(x: 0, y: (rect.height - symbol.size.height) / 2, width: symbol.size.width, height: symbol.size.height)
-                symbol.draw(in: symbolRect)
-                NSColor.labelColor.set()
-                symbolRect.fill(using: .sourceAtop)
-            }
-            let dotRect = NSRect(x: rect.width - 7, y: 1, width: 6, height: 6)
-            dot.setFill()
-            NSBezierPath(ovalIn: dotRect).fill()
-            return true
-        }
-        image.isTemplate = false
-        return image
     }
 }
 

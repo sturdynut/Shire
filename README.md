@@ -37,7 +37,7 @@ it, and it isn't a general process manager. See [PLAN.md](PLAN.md) for the produ
 - **`shire`**: the command line (`apply`, `status`, `doctor`, `logs`, `restart`, `alerts`…).
 - **shire-agent**: a background LaunchAgent that checks health, keeps the Mac awake, sends alerts and serves the
   phone page.
-- **Shire.app**: a menu bar icon (a server rack with a green, amber or red dot) and a window with each service's
+- **Shire.app**: a menu bar icon (the Shire hill with a green, amber or red dot) and a window with each service's
   logs, config.yaml with live checks, Readiness and Alerts.
 - **A phone page** on your Tailscale network: status, likely causes, recent logs, a Restart button only you can
   press, and push alerts once it's on your Home Screen.

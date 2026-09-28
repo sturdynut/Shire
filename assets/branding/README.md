@@ -19,6 +19,8 @@ always running. The name is the shelter; green is the colour Shire already uses 
 - Shire.app's icon (also shown on its notifications), built from the logo by `App/build-icon.sh` during `make app`.
 - `Sources/ShireCore/Phone/PhoneIcons.swift`: the phone page's Home Screen icon (180×180) and manifest icon
   (512×512), drawn on warm ivory because iOS shows transparent icon areas as black.
+- The menu bar: a one-colour glyph of the same hill, doorway and drawers, drawn with paths in
+  `Sources/ShireApp/ShireGlyph.swift` so it stays crisp at 16 points and follows a light or dark menu bar.
 - The top of the repository README.
 
 After changing the logo, `make app` rebuilds the app icon and `make icons` regenerates the phone icons.
