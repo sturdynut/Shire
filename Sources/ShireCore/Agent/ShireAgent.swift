@@ -267,7 +267,9 @@ public final class ShireAgent {
         reportDowntime()
         withExtendedLifetime(sources) {
             while true {
-                tick()
+                // The agent runs indefinitely on this thread. Drain Foundation's temporary
+                // autoreleased objects after each pass instead of retaining them until exit.
+                autoreleasepool { _ = tick() }
                 if stop.wait(timeout: .now() + interval) == .success { break }
             }
         }
